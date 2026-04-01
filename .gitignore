@@ -1,0 +1,17 @@
+# Quartus generated databases and caches
+db/
+incremental_db/
+
+# Quartus reports and session files
+*.rpt
+*.summary
+*.done
+*.dpf
+*.qws
+*.pin
+
+# Generated programming/output files
+*.pof
+
+# Local backups
+*.bak
