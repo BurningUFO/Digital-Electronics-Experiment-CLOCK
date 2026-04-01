@@ -1,0 +1,151 @@
+|clock
+clk_1k => clk_1k~0.IN4
+rst => rst~0.IN4
+sec_unit_seg[0] <= seg_7:seg_s_u.seg
+sec_unit_seg[1] <= seg_7:seg_s_u.seg
+sec_unit_seg[2] <= seg_7:seg_s_u.seg
+sec_unit_seg[3] <= seg_7:seg_s_u.seg
+sec_unit_seg[4] <= seg_7:seg_s_u.seg
+sec_unit_seg[5] <= seg_7:seg_s_u.seg
+sec_unit_seg[6] <= seg_7:seg_s_u.seg
+sec_unit_seg[7] <= seg_7:seg_s_u.seg
+sec_ten_bcd[0] <= cnt60:u_sec.q_ten
+sec_ten_bcd[1] <= cnt60:u_sec.q_ten
+sec_ten_bcd[2] <= cnt60:u_sec.q_ten
+sec_ten_bcd[3] <= cnt60:u_sec.q_ten
+min_unit_bcd[0] <= cnt60:u_min.q_unit
+min_unit_bcd[1] <= cnt60:u_min.q_unit
+min_unit_bcd[2] <= cnt60:u_min.q_unit
+min_unit_bcd[3] <= cnt60:u_min.q_unit
+min_ten_bcd[0] <= cnt60:u_min.q_ten
+min_ten_bcd[1] <= cnt60:u_min.q_ten
+min_ten_bcd[2] <= cnt60:u_min.q_ten
+min_ten_bcd[3] <= cnt60:u_min.q_ten
+hour_unit_bcd[0] <= cnt24:u_hour.q_unit
+hour_unit_bcd[1] <= cnt24:u_hour.q_unit
+hour_unit_bcd[2] <= cnt24:u_hour.q_unit
+hour_unit_bcd[3] <= cnt24:u_hour.q_unit
+hour_ten_bcd[0] <= cnt24:u_hour.q_ten
+hour_ten_bcd[1] <= cnt24:u_hour.q_ten
+hour_ten_bcd[2] <= cnt24:u_hour.q_ten
+hour_ten_bcd[3] <= cnt24:u_hour.q_ten
+
+
+|clock|clk_ring:u_clk_div
+clk_1k => cnt[9].CLK
+clk_1k => cnt[8].CLK
+clk_1k => cnt[7].CLK
+clk_1k => cnt[6].CLK
+clk_1k => cnt[5].CLK
+clk_1k => cnt[4].CLK
+clk_1k => cnt[3].CLK
+clk_1k => cnt[2].CLK
+clk_1k => cnt[1].CLK
+clk_1k => cnt[0].CLK
+rst => always0~0.IN0
+tick_1h <= Equal0.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|clock|cnt60:u_sec
+clk => q_ten[3]~reg0.CLK
+clk => q_ten[2]~reg0.CLK
+clk => q_ten[1]~reg0.CLK
+clk => q_ten[0]~reg0.CLK
+clk => q_unit[3]~reg0.CLK
+clk => q_unit[2]~reg0.CLK
+clk => q_unit[1]~reg0.CLK
+clk => q_unit[0]~reg0.CLK
+rst => always0~0.IN0
+en => q_unit~15.OUTPUTSELECT
+en => q_unit~14.OUTPUTSELECT
+en => q_unit~13.OUTPUTSELECT
+en => q_unit~12.OUTPUTSELECT
+en => q_ten~15.OUTPUTSELECT
+en => q_ten~14.OUTPUTSELECT
+en => q_ten~13.OUTPUTSELECT
+en => q_ten~12.OUTPUTSELECT
+en => cout~0.IN1
+q_ten[0] <= q_ten[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[1] <= q_ten[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[2] <= q_ten[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[3] <= q_ten[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[0] <= q_unit[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[1] <= q_unit[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[2] <= q_unit[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[3] <= q_unit[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+cout <= cout~1.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|clock|cnt60:u_min
+clk => q_ten[3]~reg0.CLK
+clk => q_ten[2]~reg0.CLK
+clk => q_ten[1]~reg0.CLK
+clk => q_ten[0]~reg0.CLK
+clk => q_unit[3]~reg0.CLK
+clk => q_unit[2]~reg0.CLK
+clk => q_unit[1]~reg0.CLK
+clk => q_unit[0]~reg0.CLK
+rst => always0~0.IN0
+en => q_unit~15.OUTPUTSELECT
+en => q_unit~14.OUTPUTSELECT
+en => q_unit~13.OUTPUTSELECT
+en => q_unit~12.OUTPUTSELECT
+en => q_ten~15.OUTPUTSELECT
+en => q_ten~14.OUTPUTSELECT
+en => q_ten~13.OUTPUTSELECT
+en => q_ten~12.OUTPUTSELECT
+en => cout~0.IN1
+q_ten[0] <= q_ten[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[1] <= q_ten[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[2] <= q_ten[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[3] <= q_ten[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[0] <= q_unit[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[1] <= q_unit[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[2] <= q_unit[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[3] <= q_unit[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+cout <= cout~1.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|clock|cnt24:u_hour
+clk => q_ten[3]~reg0.CLK
+clk => q_ten[2]~reg0.CLK
+clk => q_ten[1]~reg0.CLK
+clk => q_ten[0]~reg0.CLK
+clk => q_unit[3]~reg0.CLK
+clk => q_unit[2]~reg0.CLK
+clk => q_unit[1]~reg0.CLK
+clk => q_unit[0]~reg0.CLK
+rst => always0~0.IN0
+en => q_unit~15.OUTPUTSELECT
+en => q_unit~14.OUTPUTSELECT
+en => q_unit~13.OUTPUTSELECT
+en => q_unit~12.OUTPUTSELECT
+en => q_ten~15.OUTPUTSELECT
+en => q_ten~14.OUTPUTSELECT
+en => q_ten~13.OUTPUTSELECT
+en => q_ten~12.OUTPUTSELECT
+q_ten[0] <= q_ten[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[1] <= q_ten[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[2] <= q_ten[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_ten[3] <= q_ten[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[0] <= q_unit[0]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[1] <= q_unit[1]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[2] <= q_unit[2]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+q_unit[3] <= q_unit[3]~reg0.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|clock|seg_7:seg_s_u
+A[0] => Decoder0.IN3
+A[1] => Decoder0.IN2
+A[2] => Decoder0.IN1
+A[3] => Decoder0.IN0
+seg[0] <= seg~6.DB_MAX_OUTPUT_PORT_TYPE
+seg[1] <= seg~5.DB_MAX_OUTPUT_PORT_TYPE
+seg[2] <= seg~4.DB_MAX_OUTPUT_PORT_TYPE
+seg[3] <= seg~3.DB_MAX_OUTPUT_PORT_TYPE
+seg[4] <= seg~2.DB_MAX_OUTPUT_PORT_TYPE
+seg[5] <= seg~1.DB_MAX_OUTPUT_PORT_TYPE
+seg[6] <= seg~0.DB_MAX_OUTPUT_PORT_TYPE
+seg[7] <= <GND>
+
+

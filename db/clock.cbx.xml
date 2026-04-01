@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<LOG_ROOT>
+	<PROJECT NAME="clock">
+		<CBX_INST_ENTRY INSTANCE_NAME="|clock|clk_ring:u_clk_div|lpm_add_sub:Add0" CBX_FILE_NAME="add_sub_4ph.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|clock|cnt24:u_hour|lpm_add_sub:Add0" CBX_FILE_NAME="add_sub_3kh.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|clock|cnt60:u_min|lpm_add_sub:Add0" CBX_FILE_NAME="add_sub_3kh.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|clock|cnt60:u_sec|lpm_add_sub:Add0" CBX_FILE_NAME="add_sub_3kh.tdf"/>
+	</PROJECT>
+</LOG_ROOT>

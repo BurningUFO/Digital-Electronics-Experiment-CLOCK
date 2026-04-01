@@ -1,0 +1,479 @@
+Analysis & Synthesis report for clock
+Fri Mar 27 11:59:48 2026
+Quartus II Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Analysis & Synthesis Summary
+  3. Analysis & Synthesis Settings
+  4. Analysis & Synthesis Source Files Read
+  5. Analysis & Synthesis Resource Usage Summary
+  6. Analysis & Synthesis Resource Utilization by Entity
+  7. Source assignments for cnt24:u_hour|lpm_counter:q_unit_rtl_0
+  8. Source assignments for cnt60:u_sec|lpm_add_sub:Add0|addcore:adder
+  9. Source assignments for cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]
+ 10. Source assignments for cnt60:u_min|lpm_add_sub:Add0|addcore:adder
+ 11. Source assignments for cnt60:u_min|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]
+ 12. Source assignments for cnt24:u_hour|lpm_add_sub:Add0|addcore:adder
+ 13. Source assignments for cnt24:u_hour|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]
+ 14. Source assignments for clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[1]
+ 15. Source assignments for clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[0]
+ 16. Parameter Settings for Inferred Entity Instance: cnt24:u_hour|lpm_counter:q_unit_rtl_0
+ 17. Parameter Settings for Inferred Entity Instance: cnt60:u_sec|lpm_add_sub:Add0
+ 18. Parameter Settings for Inferred Entity Instance: cnt60:u_min|lpm_add_sub:Add0
+ 19. Parameter Settings for Inferred Entity Instance: cnt24:u_hour|lpm_add_sub:Add0
+ 20. Parameter Settings for Inferred Entity Instance: clk_ring:u_clk_div|lpm_add_sub:Add0
+ 21. Analysis & Synthesis Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 1991-2009 Altera Corporation
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, Altera MegaCore Function License 
+Agreement, or other applicable license agreement, including, 
+without limitation, that your use is for the sole purpose of 
+programming logic devices manufactured by Altera and sold by 
+Altera or its authorized distributors.  Please refer to the 
+applicable agreement for further details.
+
+
+
++----------------------------------------------------------------------------+
+; Analysis & Synthesis Summary                                               ;
++-----------------------------+----------------------------------------------+
+; Analysis & Synthesis Status ; Successful - Fri Mar 27 11:59:48 2026        ;
+; Quartus II Version          ; 9.0 Build 235 06/17/2009 SP 2 SJ Web Edition ;
+; Revision Name               ; clock                                        ;
+; Top-level Entity Name       ; clock                                        ;
+; Family                      ; MAX7000S                                     ;
+; Total macrocells            ; 44                                           ;
+; Total pins                  ; 30                                           ;
++-----------------------------+----------------------------------------------+
+
+
++------------------------------------------------------------------------------------------------+
+; Analysis & Synthesis Settings                                                                  ;
++--------------------------------------------------------------+-----------------+---------------+
+; Option                                                       ; Setting         ; Default Value ;
++--------------------------------------------------------------+-----------------+---------------+
+; Device                                                       ; EPM7128SLC84-15 ;               ;
+; Top-level entity name                                        ; clock           ; clock         ;
+; Family name                                                  ; MAX7000S        ; Stratix II    ;
+; Use Generated Physical Constraints File                      ; Off             ;               ;
+; Use smart compilation                                        ; Off             ; Off           ;
+; Create Debugging Nodes for IP Cores                          ; Off             ; Off           ;
+; Preserve fewer node names                                    ; On              ; On            ;
+; Disable OpenCore Plus hardware evaluation                    ; Off             ; Off           ;
+; Verilog Version                                              ; Verilog_2001    ; Verilog_2001  ;
+; VHDL Version                                                 ; VHDL93          ; VHDL93        ;
+; State Machine Processing                                     ; Auto            ; Auto          ;
+; Safe State Machine                                           ; Off             ; Off           ;
+; Extract Verilog State Machines                               ; On              ; On            ;
+; Extract VHDL State Machines                                  ; On              ; On            ;
+; Ignore Verilog initial constructs                            ; Off             ; Off           ;
+; Iteration limit for constant Verilog loops                   ; 5000            ; 5000          ;
+; Iteration limit for non-constant Verilog loops               ; 250             ; 250           ;
+; Add Pass-Through Logic to Inferred RAMs                      ; On              ; On            ;
+; Parallel Synthesis                                           ; Off             ; Off           ;
+; NOT Gate Push-Back                                           ; On              ; On            ;
+; Power-Up Don't Care                                          ; On              ; On            ;
+; Remove Duplicate Registers                                   ; On              ; On            ;
+; Ignore CARRY Buffers                                         ; Off             ; Off           ;
+; Ignore CASCADE Buffers                                       ; Off             ; Off           ;
+; Ignore GLOBAL Buffers                                        ; Off             ; Off           ;
+; Ignore ROW GLOBAL Buffers                                    ; Off             ; Off           ;
+; Ignore LCELL Buffers                                         ; Auto            ; Auto          ;
+; Ignore SOFT Buffers                                          ; Off             ; Off           ;
+; Limit AHDL Integers to 32 Bits                               ; Off             ; Off           ;
+; Optimization Technique                                       ; Speed           ; Speed         ;
+; Allow XOR Gate Usage                                         ; On              ; On            ;
+; Auto Logic Cell Insertion                                    ; On              ; On            ;
+; Parallel Expander Chain Length                               ; 4               ; 4             ;
+; Auto Parallel Expanders                                      ; On              ; On            ;
+; Auto Open-Drain Pins                                         ; On              ; On            ;
+; Auto Resource Sharing                                        ; Off             ; Off           ;
+; Maximum Fan-in Per Macrocell                                 ; 100             ; 100           ;
+; Use LogicLock Constraints during Resource Balancing          ; On              ; On            ;
+; Ignore translate_off and synthesis_off directives            ; Off             ; Off           ;
+; Show Parameter Settings Tables in Synthesis Report           ; On              ; On            ;
+; HDL message level                                            ; Level2          ; Level2        ;
+; Suppress Register Optimization Related Messages              ; Off             ; Off           ;
+; Number of Removed Registers Reported in Synthesis Report     ; 100             ; 100           ;
+; Number of Inverted Registers Reported in Synthesis Report    ; 100             ; 100           ;
+; Block Design Naming                                          ; Auto            ; Auto          ;
+; Synthesis Effort                                             ; Auto            ; Auto          ;
+; Shift Register Replacement - Allow Asynchronous Clear Signal ; On              ; On            ;
+; Analysis & Synthesis Message Level                           ; Medium          ; Medium        ;
++--------------------------------------------------------------+-----------------+---------------+
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+; Analysis & Synthesis Source Files Read                                                                                                             ;
++----------------------------------+-----------------+------------------------+----------------------------------------------------------------------+
+; File Name with User-Entered Path ; Used in Netlist ; File Type              ; File Name with Absolute Path                                         ;
++----------------------------------+-----------------+------------------------+----------------------------------------------------------------------+
+; clock.v                          ; yes             ; User Verilog HDL File  ; C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/clock.v      ;
+; lpm_counter.tdf                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_counter.tdf         ;
+; lpm_constant.inc                 ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_constant.inc        ;
+; lpm_decode.inc                   ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_decode.inc          ;
+; lpm_add_sub.inc                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_add_sub.inc         ;
+; cmpconst.inc                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/cmpconst.inc            ;
+; lpm_compare.inc                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_compare.inc         ;
+; lpm_counter.inc                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_counter.inc         ;
+; dffeea.inc                       ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/dffeea.inc              ;
+; alt_synch_counter.inc            ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_synch_counter.inc   ;
+; alt_synch_counter_f.inc          ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_synch_counter_f.inc ;
+; alt_counter_f10ke.inc            ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_counter_f10ke.inc   ;
+; alt_counter_stratix.inc          ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_counter_stratix.inc ;
+; aglobal90.inc                    ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/aglobal90.inc           ;
+; lpm_add_sub.tdf                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/lpm_add_sub.tdf         ;
+; addcore.inc                      ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/addcore.inc             ;
+; look_add.inc                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/look_add.inc            ;
+; bypassff.inc                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/bypassff.inc            ;
+; altshift.inc                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/altshift.inc            ;
+; alt_stratix_add_sub.inc          ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_stratix_add_sub.inc ;
+; alt_mercury_add_sub.inc          ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/alt_mercury_add_sub.inc ;
+; addcore.tdf                      ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/addcore.tdf             ;
+; a_csnbuffer.inc                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/a_csnbuffer.inc         ;
+; a_csnbuffer.tdf                  ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/a_csnbuffer.tdf         ;
+; altshift.tdf                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/altshift.tdf            ;
+; look_add.tdf                     ; yes             ; Megafunction           ; c:/q9/qua ii/quartus/libraries/megafunctions/look_add.tdf            ;
++----------------------------------+-----------------+------------------------+----------------------------------------------------------------------+
+
+
++--------------------------------------------------+
+; Analysis & Synthesis Resource Usage Summary      ;
++----------------------+---------------------------+
+; Resource             ; Usage                     ;
++----------------------+---------------------------+
+; Logic cells          ; 44                        ;
+; Total registers      ; 34                        ;
+; I/O pins             ; 30                        ;
+; Parallel expanders   ; 2                         ;
+; Maximum fan-out node ; clk_ring:u_clk_div|cnt[0] ;
+; Maximum fan-out      ; 35                        ;
+; Total fan-out        ; 774                       ;
+; Average fan-out      ; 10.46                     ;
++----------------------+---------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------+
+; Analysis & Synthesis Resource Utilization by Entity                                                                ;
++----------------------------------+------------+------+----------------------------------------------+--------------+
+; Compilation Hierarchy Node       ; Macrocells ; Pins ; Full Hierarchy Name                          ; Library Name ;
++----------------------------------+------------+------+----------------------------------------------+--------------+
+; |clock                           ; 44         ; 30   ; |clock                                       ; work         ;
+;    |clk_ring:u_clk_div|          ; 11         ; 0    ; |clock|clk_ring:u_clk_div                    ; work         ;
+;    |cnt24:u_hour|                ; 9          ; 0    ; |clock|cnt24:u_hour                          ; work         ;
+;       |lpm_counter:q_unit_rtl_0| ; 5          ; 0    ; |clock|cnt24:u_hour|lpm_counter:q_unit_rtl_0 ; work         ;
+;    |cnt60:u_min|                 ; 8          ; 0    ; |clock|cnt60:u_min                           ; work         ;
+;    |cnt60:u_sec|                 ; 8          ; 0    ; |clock|cnt60:u_sec                           ; work         ;
+;    |seg_7:seg_s_u|               ; 7          ; 0    ; |clock|seg_7:seg_s_u                         ; work         ;
++----------------------------------+------------+------+----------------------------------------------+--------------+
+
+
++--------------------------------------------------------------+
+; Source assignments for cnt24:u_hour|lpm_counter:q_unit_rtl_0 ;
++---------------------------+-------+------+-------------------+
+; Assignment                ; Value ; From ; To                ;
++---------------------------+-------+------+-------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; a101  ; -    ; -                 ;
+; SUPPRESS_DA_RULE_INTERNAL ; s102  ; -    ; -                 ;
+; SUPPRESS_DA_RULE_INTERNAL ; s103  ; -    ; -                 ;
++---------------------------+-------+------+-------------------+
+
+
++-------------------------------------------------------------------+
+; Source assignments for cnt60:u_sec|lpm_add_sub:Add0|addcore:adder ;
++---------------------------+-------+------+------------------------+
+; Assignment                ; Value ; From ; To                     ;
++---------------------------+-------+------+------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                      ;
++---------------------------+-------+------+------------------------+
+
+
++------------------------------------------------------------------------------------+
+; Source assignments for cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|addcore:adder[0] ;
++---------------------------+-------+------+-----------------------------------------+
+; Assignment                ; Value ; From ; To                                      ;
++---------------------------+-------+------+-----------------------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                                       ;
++---------------------------+-------+------+-----------------------------------------+
+
+
++-------------------------------------------------------------------+
+; Source assignments for cnt60:u_min|lpm_add_sub:Add0|addcore:adder ;
++---------------------------+-------+------+------------------------+
+; Assignment                ; Value ; From ; To                     ;
++---------------------------+-------+------+------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                      ;
++---------------------------+-------+------+------------------------+
+
+
++------------------------------------------------------------------------------------+
+; Source assignments for cnt60:u_min|lpm_add_sub:Add0|addcore:adder|addcore:adder[0] ;
++---------------------------+-------+------+-----------------------------------------+
+; Assignment                ; Value ; From ; To                                      ;
++---------------------------+-------+------+-----------------------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                                       ;
++---------------------------+-------+------+-----------------------------------------+
+
+
++--------------------------------------------------------------------+
+; Source assignments for cnt24:u_hour|lpm_add_sub:Add0|addcore:adder ;
++---------------------------+-------+------+-------------------------+
+; Assignment                ; Value ; From ; To                      ;
++---------------------------+-------+------+-------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                       ;
++---------------------------+-------+------+-------------------------+
+
+
++-------------------------------------------------------------------------------------+
+; Source assignments for cnt24:u_hour|lpm_add_sub:Add0|addcore:adder|addcore:adder[0] ;
++---------------------------+-------+------+------------------------------------------+
+; Assignment                ; Value ; From ; To                                       ;
++---------------------------+-------+------+------------------------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                                        ;
++---------------------------+-------+------+------------------------------------------+
+
+
++-----------------------------------------------------------------------------+
+; Source assignments for clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[1] ;
++---------------------------+-------+------+----------------------------------+
+; Assignment                ; Value ; From ; To                               ;
++---------------------------+-------+------+----------------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                                ;
++---------------------------+-------+------+----------------------------------+
+
+
++-----------------------------------------------------------------------------+
+; Source assignments for clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[0] ;
++---------------------------+-------+------+----------------------------------+
+; Assignment                ; Value ; From ; To                               ;
++---------------------------+-------+------+----------------------------------+
+; SUPPRESS_DA_RULE_INTERNAL ; A103  ; -    ; -                                ;
++---------------------------+-------+------+----------------------------------+
+
+
++----------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: cnt24:u_hour|lpm_counter:q_unit_rtl_0 ;
++------------------------+-------------------+-------------------------------------------+
+; Parameter Name         ; Value             ; Type                                      ;
++------------------------+-------------------+-------------------------------------------+
+; AUTO_CARRY_CHAINS      ; ON                ; AUTO_CARRY                                ;
+; IGNORE_CARRY_BUFFERS   ; OFF               ; IGNORE_CARRY                              ;
+; AUTO_CASCADE_CHAINS    ; ON                ; AUTO_CASCADE                              ;
+; IGNORE_CASCADE_BUFFERS ; OFF               ; IGNORE_CASCADE                            ;
+; LPM_WIDTH              ; 4                 ; Untyped                                   ;
+; LPM_DIRECTION          ; UP                ; Untyped                                   ;
+; LPM_MODULUS            ; 0                 ; Untyped                                   ;
+; LPM_AVALUE             ; UNUSED            ; Untyped                                   ;
+; LPM_SVALUE             ; UNUSED            ; Untyped                                   ;
+; LPM_PORT_UPDOWN        ; PORT_CONNECTIVITY ; Untyped                                   ;
+; DEVICE_FAMILY          ; MAX7000S          ; Untyped                                   ;
+; CARRY_CHAIN            ; MANUAL            ; Untyped                                   ;
+; CARRY_CHAIN_LENGTH     ; 48                ; CARRY_CHAIN_LENGTH                        ;
+; NOT_GATE_PUSH_BACK     ; ON                ; NOT_GATE_PUSH_BACK                        ;
+; CARRY_CNT_EN           ; SMART             ; Untyped                                   ;
+; LABWIDE_SCLR           ; ON                ; Untyped                                   ;
+; USE_NEW_VERSION        ; TRUE              ; Untyped                                   ;
+; CBXI_PARAMETER         ; NOTHING           ; Untyped                                   ;
++------------------------+-------------------+-------------------------------------------+
+Note: In order to hide this table in the UI and the text report file, please set the "Show Parameter Settings Tables in Synthesis Report" option in "Analysis and Synthesis Settings -> More Settings" to "Off".
+
+
++-------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: cnt60:u_sec|lpm_add_sub:Add0 ;
++------------------------+-------------+----------------------------------------+
+; Parameter Name         ; Value       ; Type                                   ;
++------------------------+-------------+----------------------------------------+
+; LPM_WIDTH              ; 4           ; Untyped                                ;
+; LPM_REPRESENTATION     ; UNSIGNED    ; Untyped                                ;
+; LPM_DIRECTION          ; ADD         ; Untyped                                ;
+; ONE_INPUT_IS_CONSTANT  ; NO          ; Untyped                                ;
+; LPM_PIPELINE           ; 0           ; Untyped                                ;
+; MAXIMIZE_SPEED         ; 5           ; Untyped                                ;
+; REGISTERED_AT_END      ; 0           ; Untyped                                ;
+; OPTIMIZE_FOR_SPEED     ; 9           ; Untyped                                ;
+; USE_CS_BUFFERS         ; 1           ; Untyped                                ;
+; CARRY_CHAIN            ; MANUAL      ; Untyped                                ;
+; CARRY_CHAIN_LENGTH     ; 48          ; CARRY_CHAIN_LENGTH                     ;
+; DEVICE_FAMILY          ; MAX7000S    ; Untyped                                ;
+; USE_WYS                ; OFF         ; Untyped                                ;
+; STYLE                  ; FAST        ; Untyped                                ;
+; CBXI_PARAMETER         ; add_sub_3kh ; Untyped                                ;
+; AUTO_CARRY_CHAINS      ; ON          ; AUTO_CARRY                             ;
+; IGNORE_CARRY_BUFFERS   ; OFF         ; IGNORE_CARRY                           ;
+; AUTO_CASCADE_CHAINS    ; ON          ; AUTO_CASCADE                           ;
+; IGNORE_CASCADE_BUFFERS ; OFF         ; IGNORE_CASCADE                         ;
++------------------------+-------------+----------------------------------------+
+Note: In order to hide this table in the UI and the text report file, please set the "Show Parameter Settings Tables in Synthesis Report" option in "Analysis and Synthesis Settings -> More Settings" to "Off".
+
+
++-------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: cnt60:u_min|lpm_add_sub:Add0 ;
++------------------------+-------------+----------------------------------------+
+; Parameter Name         ; Value       ; Type                                   ;
++------------------------+-------------+----------------------------------------+
+; LPM_WIDTH              ; 4           ; Untyped                                ;
+; LPM_REPRESENTATION     ; UNSIGNED    ; Untyped                                ;
+; LPM_DIRECTION          ; ADD         ; Untyped                                ;
+; ONE_INPUT_IS_CONSTANT  ; NO          ; Untyped                                ;
+; LPM_PIPELINE           ; 0           ; Untyped                                ;
+; MAXIMIZE_SPEED         ; 5           ; Untyped                                ;
+; REGISTERED_AT_END      ; 0           ; Untyped                                ;
+; OPTIMIZE_FOR_SPEED     ; 9           ; Untyped                                ;
+; USE_CS_BUFFERS         ; 1           ; Untyped                                ;
+; CARRY_CHAIN            ; MANUAL      ; Untyped                                ;
+; CARRY_CHAIN_LENGTH     ; 48          ; CARRY_CHAIN_LENGTH                     ;
+; DEVICE_FAMILY          ; MAX7000S    ; Untyped                                ;
+; USE_WYS                ; OFF         ; Untyped                                ;
+; STYLE                  ; FAST        ; Untyped                                ;
+; CBXI_PARAMETER         ; add_sub_3kh ; Untyped                                ;
+; AUTO_CARRY_CHAINS      ; ON          ; AUTO_CARRY                             ;
+; IGNORE_CARRY_BUFFERS   ; OFF         ; IGNORE_CARRY                           ;
+; AUTO_CASCADE_CHAINS    ; ON          ; AUTO_CASCADE                           ;
+; IGNORE_CASCADE_BUFFERS ; OFF         ; IGNORE_CASCADE                         ;
++------------------------+-------------+----------------------------------------+
+Note: In order to hide this table in the UI and the text report file, please set the "Show Parameter Settings Tables in Synthesis Report" option in "Analysis and Synthesis Settings -> More Settings" to "Off".
+
+
++--------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: cnt24:u_hour|lpm_add_sub:Add0 ;
++------------------------+-------------+-----------------------------------------+
+; Parameter Name         ; Value       ; Type                                    ;
++------------------------+-------------+-----------------------------------------+
+; LPM_WIDTH              ; 4           ; Untyped                                 ;
+; LPM_REPRESENTATION     ; UNSIGNED    ; Untyped                                 ;
+; LPM_DIRECTION          ; ADD         ; Untyped                                 ;
+; ONE_INPUT_IS_CONSTANT  ; NO          ; Untyped                                 ;
+; LPM_PIPELINE           ; 0           ; Untyped                                 ;
+; MAXIMIZE_SPEED         ; 5           ; Untyped                                 ;
+; REGISTERED_AT_END      ; 0           ; Untyped                                 ;
+; OPTIMIZE_FOR_SPEED     ; 9           ; Untyped                                 ;
+; USE_CS_BUFFERS         ; 1           ; Untyped                                 ;
+; CARRY_CHAIN            ; MANUAL      ; Untyped                                 ;
+; CARRY_CHAIN_LENGTH     ; 48          ; CARRY_CHAIN_LENGTH                      ;
+; DEVICE_FAMILY          ; MAX7000S    ; Untyped                                 ;
+; USE_WYS                ; OFF         ; Untyped                                 ;
+; STYLE                  ; FAST        ; Untyped                                 ;
+; CBXI_PARAMETER         ; add_sub_3kh ; Untyped                                 ;
+; AUTO_CARRY_CHAINS      ; ON          ; AUTO_CARRY                              ;
+; IGNORE_CARRY_BUFFERS   ; OFF         ; IGNORE_CARRY                            ;
+; AUTO_CASCADE_CHAINS    ; ON          ; AUTO_CASCADE                            ;
+; IGNORE_CASCADE_BUFFERS ; OFF         ; IGNORE_CASCADE                          ;
++------------------------+-------------+-----------------------------------------+
+Note: In order to hide this table in the UI and the text report file, please set the "Show Parameter Settings Tables in Synthesis Report" option in "Analysis and Synthesis Settings -> More Settings" to "Off".
+
+
++--------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: clk_ring:u_clk_div|lpm_add_sub:Add0 ;
++------------------------+-------------+-----------------------------------------------+
+; Parameter Name         ; Value       ; Type                                          ;
++------------------------+-------------+-----------------------------------------------+
+; LPM_WIDTH              ; 10          ; Untyped                                       ;
+; LPM_REPRESENTATION     ; UNSIGNED    ; Untyped                                       ;
+; LPM_DIRECTION          ; ADD         ; Untyped                                       ;
+; ONE_INPUT_IS_CONSTANT  ; YES         ; Untyped                                       ;
+; LPM_PIPELINE           ; 0           ; Untyped                                       ;
+; MAXIMIZE_SPEED         ; 5           ; Untyped                                       ;
+; REGISTERED_AT_END      ; 0           ; Untyped                                       ;
+; OPTIMIZE_FOR_SPEED     ; 9           ; Untyped                                       ;
+; USE_CS_BUFFERS         ; 1           ; Untyped                                       ;
+; CARRY_CHAIN            ; MANUAL      ; Untyped                                       ;
+; CARRY_CHAIN_LENGTH     ; 48          ; CARRY_CHAIN_LENGTH                            ;
+; DEVICE_FAMILY          ; MAX7000S    ; Untyped                                       ;
+; USE_WYS                ; OFF         ; Untyped                                       ;
+; STYLE                  ; FAST        ; Untyped                                       ;
+; CBXI_PARAMETER         ; add_sub_4ph ; Untyped                                       ;
+; AUTO_CARRY_CHAINS      ; ON          ; AUTO_CARRY                                    ;
+; IGNORE_CARRY_BUFFERS   ; OFF         ; IGNORE_CARRY                                  ;
+; AUTO_CASCADE_CHAINS    ; ON          ; AUTO_CASCADE                                  ;
+; IGNORE_CASCADE_BUFFERS ; OFF         ; IGNORE_CASCADE                                ;
++------------------------+-------------+-----------------------------------------------+
+Note: In order to hide this table in the UI and the text report file, please set the "Show Parameter Settings Tables in Synthesis Report" option in "Analysis and Synthesis Settings -> More Settings" to "Off".
+
+
++-------------------------------+
+; Analysis & Synthesis Messages ;
++-------------------------------+
+Info: *******************************************************************
+Info: Running Quartus II Analysis & Synthesis
+    Info: Version 9.0 Build 235 06/17/2009 Service Pack 2 SJ Web Edition
+    Info: Processing started: Fri Mar 27 11:59:46 2026
+Info: Command: quartus_map --read_settings_files=on --write_settings_files=off clock -c clock
+Info: Found 5 design units, including 5 entities, in source file clock.v
+    Info: Found entity 1: clk_ring
+    Info: Found entity 2: cnt60
+    Info: Found entity 3: cnt24
+    Info: Found entity 4: seg_7
+    Info: Found entity 5: clock
+Info: Elaborating entity "clock" for the top level hierarchy
+Info: Elaborating entity "clk_ring" for hierarchy "clk_ring:u_clk_div"
+Info: Elaborating entity "cnt60" for hierarchy "cnt60:u_sec"
+Info: Elaborating entity "cnt24" for hierarchy "cnt24:u_hour"
+Info: Elaborating entity "seg_7" for hierarchy "seg_7:seg_s_u"
+Info: Inferred 1 megafunctions from design logic
+    Info: Inferred lpm_counter megafunction (LPM_WIDTH=4) from the following logic: "cnt24:u_hour|q_unit[0]~16"
+Info: Inferred 4 megafunctions from design logic
+    Info: Inferred adder/subtractor megafunction ("lpm_add_sub") from the following logic: "cnt60:u_sec|Add0"
+    Info: Inferred adder/subtractor megafunction ("lpm_add_sub") from the following logic: "cnt60:u_min|Add0"
+    Info: Inferred adder/subtractor megafunction ("lpm_add_sub") from the following logic: "cnt24:u_hour|Add0"
+    Info: Inferred adder/subtractor megafunction ("lpm_add_sub") from the following logic: "clk_ring:u_clk_div|Add0"
+Info: Elaborated megafunction instantiation "cnt24:u_hour|lpm_counter:q_unit_rtl_0"
+Info: Instantiated megafunction "cnt24:u_hour|lpm_counter:q_unit_rtl_0" with the following parameter:
+    Info: Parameter "LPM_WIDTH" = "4"
+    Info: Parameter "LPM_DIRECTION" = "UP"
+    Info: Parameter "LPM_TYPE" = "LPM_COUNTER"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Instantiated megafunction "cnt60:u_sec|lpm_add_sub:Add0" with the following parameter:
+    Info: Parameter "LPM_WIDTH" = "4"
+    Info: Parameter "LPM_DIRECTION" = "ADD"
+    Info: Parameter "LPM_REPRESENTATION" = "UNSIGNED"
+    Info: Parameter "ONE_INPUT_IS_CONSTANT" = "NO"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|a_csnbuffer:oflow_node", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|a_csnbuffer:result_node", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]|a_csnbuffer:oflow_node", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|addcore:adder|addcore:adder[0]|a_csnbuffer:result_node", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|altshift:result_ext_latency_ffs", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0|altshift:carry_ext_latency_ffs", which is child of megafunction instantiation "cnt60:u_sec|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0"
+Info: Instantiated megafunction "clk_ring:u_clk_div|lpm_add_sub:Add0" with the following parameter:
+    Info: Parameter "LPM_WIDTH" = "10"
+    Info: Parameter "LPM_DIRECTION" = "ADD"
+    Info: Parameter "LPM_REPRESENTATION" = "UNSIGNED"
+    Info: Parameter "ONE_INPUT_IS_CONSTANT" = "YES"
+Info: Elaborated megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[1]", which is child of megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0|addcore:adder[0]", which is child of megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0|look_add:look_ahead_unit", which is child of megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0"
+Info: Elaborated megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0|altshift:result_ext_latency_ffs", which is child of megafunction instantiation "clk_ring:u_clk_div|lpm_add_sub:Add0"
+Info: Ignored 19 buffer(s)
+    Info: Ignored 19 SOFT buffer(s)
+Warning: Output pins are stuck at VCC or GND
+    Warning (13410): Pin "sec_unit_seg[7]" is stuck at GND
+Info: Promoted pin-driven signal(s) to global signal
+    Info: Promoted clear signal driven by pin "rst" to global clear signal
+Info: Implemented 74 device resources after synthesis - the final resource count might be different
+    Info: Implemented 2 input pins
+    Info: Implemented 28 output pins
+    Info: Implemented 44 macrocells
+Info: Quartus II Analysis & Synthesis was successful. 0 errors, 2 warnings
+    Info: Peak virtual memory: 239 megabytes
+    Info: Processing ended: Fri Mar 27 11:59:48 2026
+    Info: Elapsed time: 00:00:02
+    Info: Total CPU time (on all processors): 00:00:02
+
+
