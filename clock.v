@@ -104,31 +104,61 @@ module clock(
     output [3:0] min_unit_bcd, 
     output [3:0] min_ten_bcd,  
     output [3:0] hour_unit_bcd,
-    output [3:0] hour_ten_bcd  
+    output [3:0] hour_ten_bcd,
+
+    // ĞÂÔöÊäÈë
+    input qd_pulse,
+    input en_switch,
+    input start_switch,
+    input [1:0] sel_switch,
+    output countdown_done
 );
 
-    wire tick_1h, carry_sec, carry_min;
-    wire [3:0] sec_u;
-    
-    // ä½¿ç”¨ç»Ÿä¸€çš„ 1KHz æ—¶é’Ÿï¼Œè®¡æ•°æ¨è¿›ç”± 1Hz ä½¿èƒ½è„‰å†²æ§åˆ¶
-    clk_ring u_clk_div(.clk_1k(clk_1k), .rst(rst), .tick_1h(tick_1h));
+wire tick_1h;
+wire carry_sec, carry_min;
 
-    cnt60 u_sec(
-        .clk(clk_1k), .rst(rst), .en(tick_1h), 
-        .q_ten(sec_ten_bcd), .q_unit(sec_u), .cout(carry_sec) 
-    );
+wire [3:0] sec_t_r, sec_u_r;
+wire [7:0] seg_r;
+wire [3:0] min_t_r, min_u_r;
+wire [3:0] hour_t_r, hour_u_r;
 
-    cnt60 u_min(
-        .clk(clk_1k), .rst(rst), .en(carry_sec), 
-        .q_ten(min_ten_bcd), .q_unit(min_unit_bcd), .cout(carry_min)
-    );
+wire [3:0] cd_m_t, cd_m_u, cd_s_t, cd_s_u;
+wire cd_done;
 
-    cnt24 u_hour(
-        .clk(clk_1k), .rst(rst), .en(carry_min), 
-        .q_ten(hour_ten_bcd), .q_unit(hour_unit_bcd)
-    );
+// µ¹¼ÆÊ±¿ª¹Ø¿ØÖÆ
+wire tick_cd = en_switch ? tick_1h : 1'b0;
+wire qd_cd   = en_switch ? qd_pulse : 1'b0;
 
-    // å½“å‰ç³»ç»Ÿåªæœ‰ LG1 éœ€è¦è¾“å‡ºä¸ƒæ®µæ®µç 
-    seg_7 seg_s_u(.A(sec_u), .seg(sec_unit_seg)); 
+// Ê±ÖÓºËĞÄ£¨ÍêÈ«²»¶¯£©
+clk_ring u_clk_div(.clk_1k(clk_1k), .rst(rst), .tick_1h(tick_1h));
+cnt60  u_sec(.clk(clk_1k),.rst(rst),.en(tick_1h),.q_ten(sec_t_r),.q_unit(sec_u_r),.cout(carry_sec));
+cnt60  u_min(.clk(clk_1k),.rst(rst),.en(carry_sec),.q_ten(min_t_r),.q_unit(min_u_r),.cout(carry_min));
+cnt24  u_hour(.clk(clk_1k),.rst(rst),.en(carry_min),.q_ten(hour_t_r),.q_unit(hour_u_r));
+seg_7  u_seg(.A(sec_u_r),.seg(seg_r));
+
+// µ¹¼ÆÊ±£¨ÍêÈ«²»¶¯£©
+countdown_ctrl u_cd
+(
+    .clk(clk_1k),
+    .rst_n(rst),
+    .tick_1hz(tick_cd),
+    .qd_pulse(qd_cd),
+    .start_switch(start_switch),
+    .sel_switch(sel_switch),
+    .cd_min_ten(cd_m_t),
+    .cd_min_unit(cd_m_u),
+    .cd_sec_ten(cd_s_t),
+    .cd_sec_unit(cd_s_u),
+    .countdown_done(cd_done)
+);
+
+// Êä³öÇĞ»»
+assign hour_ten_bcd  = en_switch ? cd_m_t : hour_t_r;
+assign hour_unit_bcd = en_switch ? cd_m_u : hour_u_r;
+assign min_ten_bcd   = en_switch ? cd_s_t : min_t_r;
+assign min_unit_bcd  = en_switch ? cd_s_u : min_u_r;
+assign sec_ten_bcd   = en_switch ? 4'd0   : sec_t_r;
+assign sec_unit_seg  = en_switch ? 8'h00  : seg_r;
+assign countdown_done = cd_done;
 
 endmodule
