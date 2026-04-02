@@ -96,6 +96,38 @@ module seg_7(
     end
 endmodule
 
+module time_core(
+    input clk_1k,            // 系统统一时钟
+    input rst,               // 异步复位，低电平有效
+    input tick_1h,           // 1Hz 计时使能脉冲
+    output [3:0] sec_unit_bcd,
+    output [3:0] sec_ten_bcd,
+    output [3:0] min_unit_bcd,
+    output [3:0] min_ten_bcd,
+    output [3:0] hour_unit_bcd,
+    output [3:0] hour_ten_bcd
+);
+    wire carry_sec, carry_min;
+
+    // 秒计数：每秒推进一次
+    cnt60 u_sec(
+        .clk(clk_1k), .rst(rst), .en(tick_1h),
+        .q_ten(sec_ten_bcd), .q_unit(sec_unit_bcd), .cout(carry_sec)
+    );
+
+    // 分计数：由秒计数的进位脉冲驱动
+    cnt60 u_min(
+        .clk(clk_1k), .rst(rst), .en(carry_sec),
+        .q_ten(min_ten_bcd), .q_unit(min_unit_bcd), .cout(carry_min)
+    );
+
+    // 时计数：由分计数的进位脉冲驱动
+    cnt24 u_hour(
+        .clk(clk_1k), .rst(rst), .en(carry_min),
+        .q_ten(hour_ten_bcd), .q_unit(hour_unit_bcd)
+    );
+endmodule
+
 module clock(
     input clk_1k,    
     input rst,       
@@ -107,25 +139,18 @@ module clock(
     output [3:0] hour_ten_bcd  
 );
 
-    wire tick_1h, carry_sec, carry_min;
+    wire tick_1h;
     wire [3:0] sec_u;
     
     // 使用统一的 1KHz 时钟，计数推进由 1Hz 使能脉冲控制
     clk_ring u_clk_div(.clk_1k(clk_1k), .rst(rst), .tick_1h(tick_1h));
 
-    cnt60 u_sec(
-        .clk(clk_1k), .rst(rst), .en(tick_1h), 
-        .q_ten(sec_ten_bcd), .q_unit(sec_u), .cout(carry_sec) 
-    );
-
-    cnt60 u_min(
-        .clk(clk_1k), .rst(rst), .en(carry_sec), 
-        .q_ten(min_ten_bcd), .q_unit(min_unit_bcd), .cout(carry_min)
-    );
-
-    cnt24 u_hour(
-        .clk(clk_1k), .rst(rst), .en(carry_min), 
-        .q_ten(hour_ten_bcd), .q_unit(hour_unit_bcd)
+    // time_core 统一维护当前时间，是后续模式和功能扩展的时间内核
+    time_core u_time_core(
+        .clk_1k(clk_1k), .rst(rst), .tick_1h(tick_1h),
+        .sec_unit_bcd(sec_u), .sec_ten_bcd(sec_ten_bcd),
+        .min_unit_bcd(min_unit_bcd), .min_ten_bcd(min_ten_bcd),
+        .hour_unit_bcd(hour_unit_bcd), .hour_ten_bcd(hour_ten_bcd)
     );
 
     // 当前系统只有 LG1 需要输出七段段码
