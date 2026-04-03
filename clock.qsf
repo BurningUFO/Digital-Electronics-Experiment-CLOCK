@@ -48,7 +48,6 @@ set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name VERILOG_FILE clock.v
 
 # TEC-8 pin assignments
-set_location_assignment PIN_1 -to rst
 set_location_assignment PIN_57 -to clk_1k
 
 # LG1 segment outputs (a b c d e f g dp)
@@ -88,3 +87,9 @@ set_location_assignment PIN_22 -to hour_ten_bcd[2]
 set_location_assignment PIN_24 -to hour_ten_bcd[3]
 
 set_global_assignment -name MISC_FILE "C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/clock.dpf"
+
+set_global_assignment -name MAX7000_DEVICE_IO_STANDARD TTL
+set_location_assignment PIN_1 -to rst_n
+set_global_assignment -name MISC_FILE "C:/Users/30487/Desktop/Digital-Electronics-Experiment-CLOCK/clock.dpf"
+set_location_assignment PIN_60 -to key_add_in
+set_location_assignment PIN_81 -to key_mode_in
