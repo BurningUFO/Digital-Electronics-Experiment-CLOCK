@@ -46,10 +46,21 @@ set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id e
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name VERILOG_FILE clock.v
+set_global_assignment -name VERILOG_FILE clk_ring.v
+set_global_assignment -name VERILOG_FILE seg_7.v
+set_global_assignment -name VERILOG_FILE key_ctrl.v
+set_global_assignment -name VERILOG_FILE mode_ctrl.v
+set_global_assignment -name VERILOG_FILE time_set_ctrl.v
+set_global_assignment -name VERILOG_FILE time_core.v
+set_global_assignment -name VERILOG_FILE display_ctrl.v
 
 # TEC-8 pin assignments
 set_location_assignment PIN_1 -to rst
 set_location_assignment PIN_57 -to clk_1k
+set_location_assignment PIN_60 -to qd_key
+set_location_assignment PIN_4 -to sw_a
+set_location_assignment PIN_5 -to sw_b
+set_location_assignment PIN_6 -to sw_c
 
 # LG1 segment outputs (a b c d e f g dp)
 set_location_assignment PIN_44 -to sec_unit_seg[0]

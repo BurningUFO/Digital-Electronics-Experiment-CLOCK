@@ -9,6 +9,7 @@ incremental_db/
 *.dpf
 *.qws
 *.pin
+*.smsg
 
 # Generated programming/output files
 *.pof
