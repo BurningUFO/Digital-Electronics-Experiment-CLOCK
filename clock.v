@@ -1,134 +1,122 @@
-module clk_ring(
-    input clk_1k,   // 实验箱提供的 1KHz 标准时钟
-    input rst,      // 复位信号（低电平有效）
-    output tick_1h // 输出 1Hz 使能脉冲
-);
-    reg [9:0] cnt; // 10位计数器，足够计到 999
-    assign tick_1h = (cnt == 10'd999);
-
-    // 在单一 1KHz 时钟域中产生终值脉冲，供后级计数器使能
-    always @(posedge clk_1k or negedge rst) begin
-        if (!rst) begin
-            cnt <= 0;
-        end else if (tick_1h) begin // 1KHz 计满 1000 个周期为 1 秒
-            cnt <= 0;
-        end else begin
-            cnt <= cnt + 1'b1;
-        end
-    end
-endmodule
-
-module cnt60(
-    input clk,      // 系统时钟
-    input rst,      // 异步复位
-    input en,       // 使能信号（为 1 时计数器加一）
-    output reg [3:0] q_ten,  // 十位（最大 5）
-    output reg [3:0] q_unit, // 个位（最大 9）
-    output cout     // 进位输出信号
-);
-    // 当计数器当前值为 59 且本拍有效时，输出进位脉冲
-    assign cout = (q_ten == 4'd5 && q_unit == 4'd9 && en) ? 1'b1 : 1'b0;
-
-    always @(posedge clk or negedge rst) begin
-        if (!rst) begin
-            q_ten <= 4'd0;
-            q_unit <= 4'd0;
-        end else if (en) begin
-            if (q_ten == 4'd5 && q_unit == 4'd9) begin // 从 59 回到 00
-                q_ten <= 4'd0;
-                q_unit <= 4'd0;
-            end else if (q_unit == 4'd9) begin // 个位到 9，十位加 1
-                q_ten <= q_ten + 1'b1;
-                q_unit <= 4'd0;
-            end else begin
-                q_unit <= q_unit + 1'b1; // 个位递增
-            end
-        end
-    end
-endmodule
-
-
-module cnt24(
-    input clk,
-    input rst,
-    input en,
-    output reg [3:0] q_ten,
-    output reg [3:0] q_unit
-);
-    always @(posedge clk or negedge rst) begin
-        if (!rst) begin
-            q_ten <= 4'd0;
-            q_unit <= 4'd0;
-        end else if (en) begin
-            if (q_ten == 4'd2 && q_unit == 4'd3) begin // 从 23 回到 00
-                q_ten <= 4'd0;
-                q_unit <= 4'd0;
-            end else if (q_unit == 4'd9) begin
-                q_ten <= q_ten + 1'b1;
-                q_unit <= 4'd0;
-            end else begin
-                q_unit <= q_unit + 1'b1;
-            end
-        end
-    end
-endmodule
-
-
-module seg_7(
-    input [3:0] A,      // 4位输入（BCD码）
-    output reg [7:0] seg // 8位输出，对应 a~g 和 dp
-);
-    always @ (A) begin
-        // 参考 ex-5 的已验证工程，LG1 实际采用高电平点亮的 a~g 段码
-        case (A)
-            4'd0: seg = 8'b0011_1111;
-            4'd1: seg = 8'b0000_0110;
-            4'd2: seg = 8'b0101_1011;
-            4'd3: seg = 8'b0100_1111;
-            4'd4: seg = 8'b0110_0110;
-            4'd5: seg = 8'b0110_1101;
-            4'd6: seg = 8'b0111_1101;
-            4'd7: seg = 8'b0000_0111;
-            4'd8: seg = 8'b0111_1111;
-            4'd9: seg = 8'b0110_1111;
-            default: seg = 8'b0000_0000;
-        endcase
-    end
-endmodule
-
 module clock(
-    input clk_1k,    
-    input rst,       
-    output [7:0] sec_unit_seg, 
-    output [3:0] sec_ten_bcd,  
-    output [3:0] min_unit_bcd, 
-    output [3:0] min_ten_bcd,  
+    input clk_1k,
+    input rst,
+    input qd_key,
+    input sw_a,
+    input sw_b,
+    input sw_c,
+    output [7:0] sec_unit_seg,
+    output [3:0] sec_ten_bcd,
+    output [3:0] min_unit_bcd,
+    output [3:0] min_ten_bcd,
     output [3:0] hour_unit_bcd,
-    output [3:0] hour_ten_bcd  
+    output [3:0] hour_ten_bcd
 );
+    wire tick_1h;
+    wire [3:0] sec_u_time;
+    wire [3:0] sec_t_time;
+    wire [3:0] min_u_time;
+    wire [3:0] min_t_time;
+    wire [3:0] hour_u_time;
+    wire [3:0] hour_t_time;
+    wire [3:0] sec_u_disp;
 
-    wire tick_1h, carry_sec, carry_min;
-    wire [3:0] sec_u;
-    
-    // 使用统一的 1KHz 时钟，计数推进由 1Hz 使能脉冲控制
-    clk_ring u_clk_div(.clk_1k(clk_1k), .rst(rst), .tick_1h(tick_1h));
+    wire [2:0] ctrl_sel;
+    wire [2:0] mode_state;
+    wire qd_pulse;
+    wire key_mode_pulse;
+    wire key_select_pulse;
+    wire key_add_pulse;
+    wire key_confirm_pulse;
+    wire mode_normal;
+    wire mode_time_set;
+    wire mode_alarm;
+    wire mode_hour_format;
+    wire mode_countdown;
+    wire mode_schedule;
+    wire time_set_select_hour;
+    wire time_set_hour_add_pulse;
+    wire time_set_min_add_pulse;
 
-    cnt60 u_sec(
-        .clk(clk_1k), .rst(rst), .en(tick_1h), 
-        .q_ten(sec_ten_bcd), .q_unit(sec_u), .cout(carry_sec) 
+    clk_ring u_clk_div(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .tick_1h(tick_1h)
     );
 
-    cnt60 u_min(
-        .clk(clk_1k), .rst(rst), .en(carry_sec), 
-        .q_ten(min_ten_bcd), .q_unit(min_unit_bcd), .cout(carry_min)
+    key_ctrl u_key_ctrl(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .qd_key(qd_key),
+        .sw_a(sw_a),
+        .sw_b(sw_b),
+        .sw_c(sw_c),
+        .ctrl_sel(ctrl_sel),
+        .qd_pulse(qd_pulse),
+        .key_mode_pulse(key_mode_pulse),
+        .key_select_pulse(key_select_pulse),
+        .key_add_pulse(key_add_pulse),
+        .key_confirm_pulse(key_confirm_pulse)
     );
 
-    cnt24 u_hour(
-        .clk(clk_1k), .rst(rst), .en(carry_min), 
-        .q_ten(hour_ten_bcd), .q_unit(hour_unit_bcd)
+    mode_ctrl u_mode_ctrl(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .key_mode_pulse(key_mode_pulse),
+        .mode_state(mode_state),
+        .mode_normal(mode_normal),
+        .mode_time_set(mode_time_set),
+        .mode_alarm(mode_alarm),
+        .mode_hour_format(mode_hour_format),
+        .mode_countdown(mode_countdown),
+        .mode_schedule(mode_schedule)
     );
 
-    // 当前系统只有 LG1 需要输出七段段码
-    seg_7 seg_s_u(.A(sec_u), .seg(sec_unit_seg)); 
+    time_set_ctrl u_time_set_ctrl(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .mode_time_set(mode_time_set),
+        .key_select_pulse(key_select_pulse),
+        .key_add_pulse(key_add_pulse),
+        .select_hour(time_set_select_hour),
+        .hour_add_pulse(time_set_hour_add_pulse),
+        .min_add_pulse(time_set_min_add_pulse)
+    );
 
+    time_core u_time_core(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .tick_1h(tick_1h),
+        .freeze_run(mode_time_set),
+        .add_hour_pulse(time_set_hour_add_pulse),
+        .add_min_pulse(time_set_min_add_pulse),
+        .sec_unit_bcd(sec_u_time),
+        .sec_ten_bcd(sec_t_time),
+        .min_unit_bcd(min_u_time),
+        .min_ten_bcd(min_t_time),
+        .hour_unit_bcd(hour_u_time),
+        .hour_ten_bcd(hour_t_time)
+    );
+
+    display_ctrl u_display_ctrl(
+        .mode_state(mode_state),
+        .time_set_select_hour(time_set_select_hour),
+        .sec_unit_time_bcd(sec_u_time),
+        .sec_ten_time_bcd(sec_t_time),
+        .min_unit_time_bcd(min_u_time),
+        .min_ten_time_bcd(min_t_time),
+        .hour_unit_time_bcd(hour_u_time),
+        .hour_ten_time_bcd(hour_t_time),
+        .sec_unit_disp_bcd(sec_u_disp),
+        .sec_ten_disp_bcd(sec_ten_bcd),
+        .min_unit_disp_bcd(min_unit_bcd),
+        .min_ten_disp_bcd(min_ten_bcd),
+        .hour_unit_disp_bcd(hour_unit_bcd),
+        .hour_ten_disp_bcd(hour_ten_bcd)
+    );
+
+    seg_7 u_seg_sec_unit(
+        .A(sec_u_disp),
+        .seg(sec_unit_seg)
+    );
 endmodule
