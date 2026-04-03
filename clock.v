@@ -38,14 +38,12 @@ module clock(
     wire time_set_hour_add_pulse;
     wire time_set_min_add_pulse;
 
-    // 统一 1kHz 时钟域下生成 1Hz 使能脉冲
     clk_ring u_clk_div(
         .clk_1k(clk_1k),
         .rst(rst),
         .tick_1h(tick_1h)
     );
 
-    // 按键与选择开关统一转换为干净的控制脉冲
     key_ctrl u_key_ctrl(
         .clk_1k(clk_1k),
         .rst(rst),
@@ -61,7 +59,6 @@ module clock(
         .key_confirm_pulse(key_confirm_pulse)
     );
 
-    // 统一模式状态机
     mode_ctrl u_mode_ctrl(
         .clk_1k(clk_1k),
         .rst(rst),
@@ -75,7 +72,6 @@ module clock(
         .mode_schedule(mode_schedule)
     );
 
-    // 校时模块只负责决定“当前在调哪个字段”以及生成时/分加一脉冲
     time_set_ctrl u_time_set_ctrl(
         .clk_1k(clk_1k),
         .rst(rst),
@@ -87,7 +83,6 @@ module clock(
         .min_add_pulse(time_set_min_add_pulse)
     );
 
-    // 时间核心统一保存当前时间，并响应正常走时与校时加一操作
     time_core u_time_core(
         .clk_1k(clk_1k),
         .rst(rst),
@@ -103,7 +98,6 @@ module clock(
         .hour_ten_bcd(hour_t_time)
     );
 
-    // 统一显示出口
     display_ctrl u_display_ctrl(
         .mode_state(mode_state),
         .time_set_select_hour(time_set_select_hour),
@@ -121,7 +115,6 @@ module clock(
         .hour_ten_disp_bcd(hour_ten_bcd)
     );
 
-    // LG1 仍使用七段译码
     seg_7 u_seg_sec_unit(
         .A(sec_u_disp),
         .seg(sec_unit_seg)
