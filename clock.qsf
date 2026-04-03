@@ -91,3 +91,4 @@ set_global_assignment -name MISC_FILE "C:/Users/YOUNG/Desktop/workplace/2025_202
 
 set_global_assignment -name VERILOG_FILE hour_format_ctrl.v
 set_global_assignment -name VERILOG_FILE countdown_ctrl.v
+set_global_assignment -name VERILOG_FILE debounce.v

@@ -117,6 +117,9 @@ module clock(
 wire tick_1h;
 wire carry_sec, carry_min;
 
+//prevent shaking
+wire qd_clean;
+
 wire [3:0] sec_t_r, sec_u_r;
 wire [7:0] seg_r;
 wire [3:0] min_t_r, min_u_r;
@@ -136,13 +139,23 @@ cnt60  u_min(.clk(clk_1k),.rst(rst),.en(carry_sec),.q_ten(min_t_r),.q_unit(min_u
 cnt24  u_hour(.clk(clk_1k),.rst(rst),.en(carry_min),.q_ten(hour_t_r),.q_unit(hour_u_r));
 seg_7  u_seg(.A(sec_u_r),.seg(seg_r));
 
+
+// prevent shaking
+debounce u_db
+(
+    .clk_1k(clk_1k),
+    .rst_n(rst),
+    .key_in(qd_pulse),
+    .key_out_pulse(qd_clean)
+);
+
 // 倒计时（完全不动）
 countdown_ctrl u_cd
 (
     .clk(clk_1k),
     .rst_n(rst),
     .tick_1hz(tick_cd),
-    .qd_pulse(qd_cd),
+    .qd_pulse(qd_clean),
     .start_switch(start_switch),
     .sel_switch(sel_switch),
     .cd_min_ten(cd_m_t),
@@ -159,6 +172,6 @@ assign min_ten_bcd   = en_switch ? cd_s_t : min_t_r;
 assign min_unit_bcd  = en_switch ? cd_s_u : min_u_r;
 assign sec_ten_bcd   = en_switch ? 4'd0   : sec_t_r;
 assign sec_unit_seg  = en_switch ? 8'h00  : seg_r;
-assign countdown_done = cd_done;
+assign countdown_done = 1'bz;
 
 endmodule
