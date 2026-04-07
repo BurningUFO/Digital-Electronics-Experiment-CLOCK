@@ -52,6 +52,7 @@ set_global_assignment -name VERILOG_FILE key_ctrl.v
 set_global_assignment -name VERILOG_FILE mode_ctrl.v
 set_global_assignment -name VERILOG_FILE time_set_ctrl.v
 set_global_assignment -name VERILOG_FILE time_core.v
+set_global_assignment -name VERILOG_FILE countdown_ctrl.v
 set_global_assignment -name VERILOG_FILE display_ctrl.v
 
 # TEC-8 pin assignments

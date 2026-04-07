@@ -37,6 +37,10 @@ module clock(
     wire time_set_select_hour;
     wire time_set_hour_add_pulse;
     wire time_set_min_add_pulse;
+    wire [3:0] countdown_min_ten;
+    wire [3:0] countdown_min_unit;
+    wire [3:0] countdown_sec_ten;
+    wire [3:0] countdown_sec_unit;
 
     clk_ring u_clk_div(
         .clk_1k(clk_1k),
@@ -98,6 +102,19 @@ module clock(
         .hour_ten_bcd(hour_t_time)
     );
 
+    countdown_ctrl u_countdown_ctrl(
+        .clk_1k(clk_1k),
+        .rst(rst),
+        .tick_1h(tick_1h),
+        .mode_countdown(mode_countdown),
+        .qd_pulse(qd_pulse),
+        .ctrl_sel(ctrl_sel),
+        .min_ten_bcd(countdown_min_ten),
+        .min_unit_bcd(countdown_min_unit),
+        .sec_ten_bcd(countdown_sec_ten),
+        .sec_unit_bcd(countdown_sec_unit)
+    );
+
     display_ctrl u_display_ctrl(
         .mode_state(mode_state),
         .time_set_select_hour(time_set_select_hour),
@@ -107,6 +124,10 @@ module clock(
         .min_ten_time_bcd(min_t_time),
         .hour_unit_time_bcd(hour_u_time),
         .hour_ten_time_bcd(hour_t_time),
+        .countdown_min_ten_bcd(countdown_min_ten),
+        .countdown_min_unit_bcd(countdown_min_unit),
+        .countdown_sec_ten_bcd(countdown_sec_ten),
+        .countdown_sec_unit_bcd(countdown_sec_unit),
         .sec_unit_disp_bcd(sec_u_disp),
         .sec_ten_disp_bcd(sec_ten_bcd),
         .min_unit_disp_bcd(min_unit_bcd),
