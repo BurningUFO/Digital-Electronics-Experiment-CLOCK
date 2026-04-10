@@ -28,12 +28,8 @@ module clock(
     wire key_select_pulse;
     wire key_add_pulse;
     wire key_confirm_pulse;
-    wire mode_normal;
     wire mode_time_set;
-    wire mode_alarm;
-    wire mode_hour_format;
     wire mode_countdown;
-    wire mode_schedule;
     wire time_set_select_hour;
     wire time_set_hour_add_pulse;
     wire time_set_min_add_pulse;
@@ -67,14 +63,11 @@ module clock(
         .clk_1k(clk_1k),
         .rst(rst),
         .key_mode_pulse(key_mode_pulse),
-        .mode_state(mode_state),
-        .mode_normal(mode_normal),
-        .mode_time_set(mode_time_set),
-        .mode_alarm(mode_alarm),
-        .mode_hour_format(mode_hour_format),
-        .mode_countdown(mode_countdown),
-        .mode_schedule(mode_schedule)
+        .mode_state(mode_state)
     );
+
+    assign mode_time_set  = (mode_state == 3'b001);
+    assign mode_countdown = (mode_state == 3'b100);
 
     time_set_ctrl u_time_set_ctrl(
         .clk_1k(clk_1k),

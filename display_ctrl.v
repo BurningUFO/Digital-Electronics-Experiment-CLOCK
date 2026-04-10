@@ -11,34 +11,29 @@ module display_ctrl(
     input  [3:0] countdown_min_unit_bcd,
     input  [3:0] countdown_sec_ten_bcd,
     input  [3:0] countdown_sec_unit_bcd,
-    output reg [3:0] sec_unit_disp_bcd,
-    output reg [3:0] sec_ten_disp_bcd,
-    output reg [3:0] min_unit_disp_bcd,
-    output reg [3:0] min_ten_disp_bcd,
-    output reg [3:0] hour_unit_disp_bcd,
-    output reg [3:0] hour_ten_disp_bcd
+    output [3:0] sec_unit_disp_bcd,
+    output [3:0] sec_ten_disp_bcd,
+    output [3:0] min_unit_disp_bcd,
+    output [3:0] min_ten_disp_bcd,
+    output [3:0] hour_unit_disp_bcd,
+    output [3:0] hour_ten_disp_bcd
 );
-    always @(*) begin
-        sec_unit_disp_bcd  = sec_unit_time_bcd;
-        sec_ten_disp_bcd   = sec_ten_time_bcd;
-        min_unit_disp_bcd  = min_unit_time_bcd;
-        min_ten_disp_bcd   = min_ten_time_bcd;
-        hour_unit_disp_bcd = hour_unit_time_bcd;
-        hour_ten_disp_bcd  = hour_ten_time_bcd;
+    wire mode_time_set;
+    wire mode_countdown;
+    wire mode_other;
 
-        if (mode_state == 3'b001) begin
-            // 校时模式下，LG1 显示当前正在调整的字段：1=小时，2=分钟
-            sec_unit_disp_bcd = time_set_select_hour ? 4'd1 : 4'd2;
-        end else if (mode_state == 3'b100) begin
-            sec_unit_disp_bcd  = countdown_sec_unit_bcd;
-            sec_ten_disp_bcd   = countdown_sec_ten_bcd;
-            min_unit_disp_bcd  = countdown_min_unit_bcd;
-            min_ten_disp_bcd   = countdown_min_ten_bcd;
-            hour_unit_disp_bcd = 4'd0;
-            hour_ten_disp_bcd  = 4'd0;
-        end else if (mode_state != 3'b000) begin
-            // 其余扩展模式先显示模式编号，便于联调
-            sec_unit_disp_bcd = {1'b0, mode_state};
-        end
-    end
+    assign mode_time_set  = (mode_state == 3'b001);
+    assign mode_countdown = mode_state[2] & ~mode_state[1] & ~mode_state[0];
+    assign mode_other     = |mode_state[2:1] | (mode_state[0] & ~mode_state[1]);
+
+    assign sec_unit_disp_bcd = mode_time_set ? (time_set_select_hour ? 4'd1 : 4'd2) :
+                               mode_countdown ? countdown_sec_unit_bcd :
+                               mode_other ? {1'b0, mode_state} :
+                               sec_unit_time_bcd;
+
+    assign sec_ten_disp_bcd = mode_countdown ? countdown_sec_ten_bcd : sec_ten_time_bcd;
+    assign min_unit_disp_bcd = mode_countdown ? countdown_min_unit_bcd : min_unit_time_bcd;
+    assign min_ten_disp_bcd = mode_countdown ? countdown_min_ten_bcd : min_ten_time_bcd;
+    assign hour_unit_disp_bcd = mode_countdown ? 4'd0 : hour_unit_time_bcd;
+    assign hour_ten_disp_bcd = mode_countdown ? 4'd0 : hour_ten_time_bcd;
 endmodule

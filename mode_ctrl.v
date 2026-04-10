@@ -2,13 +2,7 @@ module mode_ctrl(
     input  clk_1k,
     input  rst,
     input  key_mode_pulse,
-    output reg [2:0] mode_state,
-    output wire mode_normal,
-    output wire mode_time_set,
-    output wire mode_alarm,
-    output wire mode_hour_format,
-    output wire mode_countdown,
-    output wire mode_schedule
+    output reg [2:0] mode_state
 );
     localparam MODE_NORMAL      = 3'b000;
     localparam MODE_TIME_SET    = 3'b001;
@@ -28,11 +22,4 @@ module mode_ctrl(
             end
         end
     end
-
-    assign mode_normal      = (mode_state == MODE_NORMAL);
-    assign mode_time_set    = (mode_state == MODE_TIME_SET);
-    assign mode_alarm       = (mode_state == MODE_ALARM);
-    assign mode_hour_format = (mode_state == MODE_HOUR_FORMAT);
-    assign mode_countdown   = (mode_state == MODE_COUNTDOWN);
-    assign mode_schedule    = (mode_state == MODE_SCHEDULE);
 endmodule

@@ -13,7 +13,7 @@ module key_ctrl(
     output wire key_confirm_pulse
 );
     reg qd_ff0, qd_ff1;
-    reg [3:0] stable_cnt;
+    reg [2:0] stable_cnt;
     reg qd_stable;
     reg qd_stable_d;
 
@@ -31,7 +31,7 @@ module key_ctrl(
 
     always @(posedge clk_1k or negedge rst) begin
         if (!rst) begin
-            stable_cnt  <= 4'd0;
+            stable_cnt  <= 3'd0;
             qd_stable   <= 1'b0;
             qd_stable_d <= 1'b0;
             qd_pulse    <= 1'b0;
@@ -40,12 +40,12 @@ module key_ctrl(
             qd_pulse    <= 1'b0;
 
             if (qd_ff1 == qd_stable) begin
-                stable_cnt <= 4'd0;
+                stable_cnt <= 3'd0;
             end else begin
                 stable_cnt <= stable_cnt + 1'b1;
-                if (stable_cnt == 4'd15) begin
+                if (stable_cnt == 3'd7) begin
                     qd_stable  <= qd_ff1;
-                    stable_cnt <= 4'd0;
+                    stable_cnt <= 3'd0;
                 end
             end
 
