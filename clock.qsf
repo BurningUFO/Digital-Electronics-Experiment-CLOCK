@@ -45,7 +45,6 @@ set_global_assignment -name LAST_QUARTUS_VERSION "9.0 SP2"
 set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_blast_fpga
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
-set_global_assignment -name VERILOG_FILE clock.v
 
 # TEC-8 pin assignments
 set_location_assignment PIN_1 -to rst
@@ -88,3 +87,11 @@ set_location_assignment PIN_22 -to hour_ten_bcd[2]
 set_location_assignment PIN_24 -to hour_ten_bcd[3]
 
 set_global_assignment -name MISC_FILE "C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/clock.dpf"
+
+set_global_assignment -name MAX7000_DEVICE_IO_STANDARD TTL
+set_location_assignment PIN_61 -to key_add
+set_location_assignment PIN_62 -to key_confirm
+set_location_assignment PIN_60 -to key_select
+set_global_assignment -name MISC_FILE "C:/Users/frj/Desktop/Digital-Electronics-Experiment-CLOCK/clock.dpf"
+set_global_assignment -name VERILOG_FILE alarm_ctrl.v
+set_global_assignment -name VERILOG_FILE clock.v
