@@ -54,6 +54,7 @@ set_global_assignment -name VERILOG_FILE key_ctrl.v
 set_global_assignment -name VERILOG_FILE mode_ctrl.v
 set_global_assignment -name VERILOG_FILE time_set_ctrl.v
 set_global_assignment -name VERILOG_FILE time_core.v
+set_global_assignment -name VERILOG_FILE alarm_ctrl.v
 set_global_assignment -name VERILOG_FILE countdown_ctrl.v
 set_global_assignment -name VERILOG_FILE display_ctrl.v
 
@@ -64,6 +65,13 @@ set_location_assignment PIN_60 -to qd_key
 set_location_assignment PIN_4 -to sw_a
 set_location_assignment PIN_5 -to sw_b
 set_location_assignment PIN_6 -to sw_c
+
+# Mode select switches (priority: K5 > K4 > K3 > K2 > K1)
+set_location_assignment PIN_81 -to k1_mode_time_set
+set_location_assignment PIN_80 -to k2_mode_alarm
+set_location_assignment PIN_79 -to k3_mode_hour_format
+set_location_assignment PIN_77 -to k4_mode_countdown
+set_location_assignment PIN_76 -to k5_mode_schedule
 
 # LG1 segment outputs (a b c d e f g dp)
 set_location_assignment PIN_44 -to sec_unit_seg[0]

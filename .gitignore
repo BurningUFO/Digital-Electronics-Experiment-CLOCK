@@ -16,3 +16,8 @@ incremental_db/
 
 # Local backups
 *.bak
+
+# Local review snapshots and private notes
+_review_pujiaxin_countdown/
+hour_format_ctrl.v
+组长负责模块设计说明.md

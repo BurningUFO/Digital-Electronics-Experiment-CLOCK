@@ -1,7 +1,9 @@
 module mode_ctrl(
-    input  clk_1k,
-    input  rst,
-    input  key_mode_pulse,
+    input  mode_time_set_sw,
+    input  mode_alarm_sw,
+    input  mode_hour_format_sw,
+    input  mode_countdown_sw,
+    input  mode_schedule_sw,
     output reg [2:0] mode_state
 );
     localparam MODE_NORMAL      = 3'b000;
@@ -11,15 +13,19 @@ module mode_ctrl(
     localparam MODE_COUNTDOWN   = 3'b100;
     localparam MODE_SCHEDULE    = 3'b101;
 
-    always @(posedge clk_1k or negedge rst) begin
-        if (!rst) begin
-            mode_state <= MODE_NORMAL;
-        end else if (key_mode_pulse) begin
-            if (mode_state == MODE_SCHEDULE) begin
-                mode_state <= MODE_NORMAL;
-            end else begin
-                mode_state <= mode_state + 1'b1;
-            end
+    always @(*) begin
+        if (mode_schedule_sw) begin
+            mode_state = MODE_SCHEDULE;
+        end else if (mode_countdown_sw) begin
+            mode_state = MODE_COUNTDOWN;
+        end else if (mode_hour_format_sw) begin
+            mode_state = MODE_HOUR_FORMAT;
+        end else if (mode_alarm_sw) begin
+            mode_state = MODE_ALARM;
+        end else if (mode_time_set_sw) begin
+            mode_state = MODE_TIME_SET;
+        end else begin
+            mode_state = MODE_NORMAL;
         end
     end
 endmodule
