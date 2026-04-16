@@ -79,14 +79,14 @@
 3. 樊逸晨
 4. 方睿锦
 
-如后续成员信息有调整，请同步修改 [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/功能与修改日志.md) 和本文件。
+如后续成员信息有调整，请同步修改 [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/功能与修改日志.md) 和本文件。
 
 ## 仓库使用提醒
 
 所有组员在开始协作前，请先阅读：
 
-1. [组员Git协作指南.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/组员Git协作指南.md)
-2. [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/功能与修改日志.md)
+1. [组员Git协作指南.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/组员Git协作指南.md)
+2. [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/功能与修改日志.md)
 
 请务必遵守以下规则：
 
@@ -103,11 +103,13 @@
 2. [clock.qsf](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/clock.qsf)：Quartus 引脚与工程配置
 3. [clock.qpf](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/clock.qpf)：Quartus 工程文件
 4. [countdown_ctrl.v](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/countdown_ctrl.v)：倒计时主线模块
-5. [工程模块使用说明.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/工程模块使用说明.md)：当前主线模块和交互说明
-6. [inf.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/inf.md)：实验平台与硬件信息整理
-7. [管脚.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/管脚.md)：当前工程引脚对应说明
-8. [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/功能与修改日志.md)：功能和修改记录
-9. [组员Git协作指南.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/组员Git协作指南.md)：Git 使用与协作流程指南
+5. [工程模块使用说明.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/工程模块使用说明.md)：当前主线模块和交互说明
+6. [inf.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/inf.md)：实验平台与硬件信息整理
+7. [管脚.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/管脚.md)：当前工程引脚对应说明
+8. [功能与修改日志.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/功能与修改日志.md)：功能和修改记录
+9. [组员Git协作指南.md](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs/组员Git协作指南.md)：Git 使用与协作流程指南
+
+当前仓库的文档资源已经统一收纳到 [`docs/`](/C:/Users/YOUNG/Desktop/workplace/2025_2026_2/SDSY/CLOCK/docs) 目录中，根目录仅保留工程代码、Quartus 工程文件和仓库首页说明，便于浏览和维护。
 
 ## 维护说明
 
