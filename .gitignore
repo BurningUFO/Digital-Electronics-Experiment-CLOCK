@@ -21,3 +21,14 @@ incremental_db/
 _review_pujiaxin_countdown/
 hour_format_ctrl.v
 docs/组长负责模块设计说明.md
+
+# Vivado generated caches and logs
+clock_amd/.Xil/
+clock_amd/clock_amd.cache/
+clock_amd/clock_amd.hw/
+clock_amd/clock_amd.ip_user_files/
+clock_amd/clock_amd.runs/
+clock_amd/clock_amd.sim/
+clock_amd/*.jou
+clock_amd/*.log
+clock_amd/dfx_runtime.txt
