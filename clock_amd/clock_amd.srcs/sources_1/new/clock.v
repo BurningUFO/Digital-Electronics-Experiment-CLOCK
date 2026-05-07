@@ -11,6 +11,7 @@ module clock(
     input k3_mode_hour_format,
     input k4_mode_countdown,
     input k5_mode_schedule,
+    output alarm_beep,
     output [7:0] sec_unit_seg,
     output [3:0] sec_ten_bcd,
     output [3:0] min_unit_bcd,
@@ -131,7 +132,8 @@ module clock(
         .alarm_min_ten_bcd(alarm_min_ten),
         .alarm_min_unit_bcd(alarm_min_unit),
         .alarm_enable(alarm_enable),
-        .alarm_match(alarm_match)
+        .alarm_match(alarm_match),
+        .alarm_beep(alarm_beep)
     );
 
     countdown_ctrl u_countdown_ctrl(

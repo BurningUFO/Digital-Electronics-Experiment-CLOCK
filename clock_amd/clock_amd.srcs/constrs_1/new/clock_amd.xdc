@@ -59,3 +59,6 @@ set_property PACKAGE_PIN L18 [get_ports CG]
 set_property IOSTANDARD LVCMOS33 [get_ports CG]
 set_property PACKAGE_PIN H15 [get_ports DP]
 set_property IOSTANDARD LVCMOS33 [get_ports DP]
+
+set_property PACKAGE_PIN C17 [get_ports BUZZER_IO]
+set_property IOSTANDARD LVCMOS33 [get_ports BUZZER_IO]

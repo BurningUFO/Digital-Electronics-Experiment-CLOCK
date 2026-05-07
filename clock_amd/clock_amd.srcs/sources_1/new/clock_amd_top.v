@@ -11,12 +11,14 @@ module clock_amd_top(
     output CE,
     output CF,
     output CG,
-    output DP
+    output DP,
+    output BUZZER_IO
 );
     localparam integer TICK_1K_DIV = 17'd100000;
 
     reg [16:0] tick_1k_cnt;
     reg tick_1k;
+    wire alarm_beep;
     wire [7:0] sec_unit_seg;
     wire [3:0] sec_ten_bcd;
     wire [3:0] min_unit_bcd;
@@ -50,6 +52,7 @@ module clock_amd_top(
         .k3_mode_hour_format(SW[5]),
         .k4_mode_countdown(SW[6]),
         .k5_mode_schedule(SW[7]),
+        .alarm_beep(alarm_beep),
         .sec_unit_seg(sec_unit_seg),
         .sec_ten_bcd(sec_ten_bcd),
         .min_unit_bcd(min_unit_bcd),
@@ -77,4 +80,7 @@ module clock_amd_top(
         .CG(CG),
         .DP(DP)
     );
+
+    // The active buzzer module is driven low to sound.
+    assign BUZZER_IO = ~alarm_beep;
 endmodule
