@@ -1,8 +1,6 @@
-# Quartus generated databases and caches
+# Quartus caches and reports
 db/
 incremental_db/
-
-# Quartus reports and session files
 *.rpt
 *.summary
 *.done
@@ -10,25 +8,28 @@ incremental_db/
 *.qws
 *.pin
 *.smsg
-
-# Generated programming/output files
 *.pof
+*.sof
 
-# Local backups
+# Local backups and review snapshots
 *.bak
-
-# Local review snapshots and private notes
-_review_pujiaxin_countdown/
-hour_format_ctrl.v
+_review*/
 docs/组长负责模块设计说明.md
 
-# Vivado generated caches and logs
+# Vivado caches, runs and logs
+.Xil/
 clock_amd/.Xil/
 clock_amd/clock_amd.cache/
+clock_amd/clock_amd.gen/
 clock_amd/clock_amd.hw/
 clock_amd/clock_amd.ip_user_files/
 clock_amd/clock_amd.runs/
 clock_amd/clock_amd.sim/
 clock_amd/*.jou
 clock_amd/*.log
+clock_amd/*.str
 clock_amd/dfx_runtime.txt
+
+# Generated bitstreams and local exports
+*.bit
+*.bin
