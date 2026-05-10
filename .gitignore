@@ -12,3 +12,5 @@ vivado_*.backup.log
 dfx_runtime.txt
 *.bit
 *.bin
+*.dcp
+clock_amd.srcs/utils_1/imports/
