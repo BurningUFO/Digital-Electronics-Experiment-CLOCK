@@ -1,0 +1,14 @@
+.Xil/
+clock_amd.cache/
+clock_amd.gen/
+clock_amd.hw/
+clock_amd.ip_user_files/
+clock_amd.runs/
+clock_amd.sim/
+vivado*.jou
+vivado*.log
+vivado_*.backup.jou
+vivado_*.backup.log
+dfx_runtime.txt
+*.bit
+*.bin
