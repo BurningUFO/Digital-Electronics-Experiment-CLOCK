@@ -10,47 +10,74 @@
 - 顶层文件：`clock_amd.srcs/sources_1/new/clock_amd_top.v`
 - 主线集成：`clock_amd.srcs/sources_1/new/clock.v`
 - 约束文件：`clock_amd.srcs/constrs_1/new/clock_amd.xdc`
+- 综合检查脚本：`scripts/run_phase_synth_check.tcl`
 
 ## 当前功能
 
-1. `CLOCK` 正常走时
-2. `TIME` 模式支持时、分、秒编辑
-3. `ALARM` 模式支持时、分、秒、使能编辑
-4. 闹钟按 `HH:MM:SS` 精确比较并触发蜂鸣器
-5. `COUNT` 模式支持 `HH:MM:SS` 编辑、启动、停止和到零停止
-6. OLED 支持三模式布局、编辑边框和左右切换动画
-7. 蜂鸣器已经接入闹钟链路，倒计时结束提醒正在本工作区继续验证
+1. `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` 七个模式已接入统一 UI。
+2. `SW0=0` 为浏览层，`SW0=1` 为设置层。
+3. 八位数码管按 `模式 / 状态 / HH / MM / SS` 或当前模式数据统一显示。
+4. `CLOCK + SW0` 支持月、日、星期设置，供 OLED 状态副屏使用。
+5. `HOUR` 支持 12/24 小时显示格式切换，不改变内部 24 小时计时和事件比较。
+6. `ALARM` 支持 8 槽位、LED0~LED7 状态提示、pending 事件和闹钟贪睡。
+7. `COUNT` 支持 `HH:MM:SS` 编辑、启动、停止和到零提醒。
+8. `SCHED` 支持 8 个固定计划点、槽位开关、LED 指示和计划提醒。
+9. `notification_ctrl` 统一仲裁倒计时、闹钟和计划提醒，并作为蜂鸣器唯一驱动源。
+10. OLED 为状态副屏基础版，显示日期、温度、最近计划、最近闹钟、倒计时状态和提醒弹窗；旧三模式滑动动画已移除。
+11. ADT7420 温度读取模块已接入顶层 `TMP_SCL / TMP_SDA`，板级温度读数尚未实测。
+12. ClockLink Studio USB-UART 通信扩展已完成协议库、mock PC 软件、COMM 模式、UART、消息缓存、预设回复、时间同步、闹钟/日程/倒计时直接控制的首版集成。
 
 ## 当前交互规则
 
 模式顺序：
 
-`CLOCK -> TIME -> ALARM -> HOUR -> COUNT -> SCHED -> CLOCK`
+`CLOCK -> TIME -> ALARM -> HOUR -> COUNT -> SCHED -> COMM -> CLOCK`
 
-非编辑态：
+浏览层，`SW0=0`：
 
-1. `BTNL / BTNR`：切换模式
-2. `BTNC`：进入编辑
-3. `COUNT` 模式下：`BTNU = RUN`，`BTND = STOP`
+1. `BTNL / BTNR`：切换模式。
+2. `COUNT` 模式下 `BTNU` 启动或继续倒计时，`BTND` 停止倒计时。
+3. `COMM` 模式下 `SW0-SW15` 查看最近 16 条消息，`BTNU/BTND` 滚动消息，`BTNC` 切换查看/回复，`BTNR` 发送预设回复。
+4. `BTNC` 不再负责进入编辑层，普通状态下只作为当前模式的上下文确认键。
 
-编辑态：
+设置层，`SW0=1`：
 
-1. `BTNL / BTNR`：切换字段
-2. `BTNU / BTND`：修改当前字段
-3. `BTNC`：退出编辑
+1. `BTNL / BTNR`：切换字段或槽位。
+2. `BTNU / BTND`：修改当前字段、槽位或开关值。
+3. `BTNC`：用于上下文确认或开关切换，例如 ALARM/SCHED 使能切换、HOUR 格式切换。
+
+提醒激活时：
+
+1. 普通模式切换和设置操作会被锁定。
+2. `BTNC` 优先作为提醒确认 / 消音。
+3. 闹钟提醒下，方向键用于贪睡选择。
+
+## 当前验证结果
+
+1. `xvlog` 全源语法检查通过。
+2. `xelab clock_amd_top` 顶层展开通过。
+3. `xvlog` 全源语法检查通过。
+4. Phase 8 通信回归通过：`tb_comm_ctrl_control/time/msg/reply` 均输出 `PASS`。
+5. PC 软件 `python -m pytest` 通过，15 个测试全部通过。
+6. 最新 `vivado -mode batch -source scripts/run_phase_synth_check.tcl` 综合检查通过，时序：`WNS=+1.232ns`，`TNS=0.000ns`，失败端点 `0`。
+7. 尚未生成 bitstream。
+8. 尚未进行 Nexys A7 100T 板级 USB-UART/COMM 实测。
 
 ## 目录约定
 
 - `clock_amd.srcs/sources_1/new/`：唯一有效 HDL 源文件目录
 - `clock_amd.srcs/constrs_1/new/`：唯一有效约束目录
-- `docs/`：当前仍有效的说明文档
-- `PROJECT_STATUS.md`：当前状态和下一步
+- `scripts/`：工程维护和检查脚本
+- `docs/`：当前有效说明文档
+- `artifacts/tool-runs/`：本地 Vivado/XSim 运行产物归档，不作为主线源码
 - `HANDOFF.md`：给新 agent 的接手说明
+- `docs/AGENT_WORKLOG.md`：当前 ClockLink 阶段状态、检查结果和下一步
+- `docs/FINAL_DEMO_GUIDE.md`：ClockLink 最终演示流程
 
 ## 使用方式
 
 1. 打开 `clock_amd.xpr`
-2. 小改逻辑时先跑 `Run Synthesis`
+2. 小改逻辑时先跑 `Run Synthesis` 或 `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
 3. 需要上板时再跑 `Generate Bitstream`
 4. 下载到 Nexys A7 100T 验证
 

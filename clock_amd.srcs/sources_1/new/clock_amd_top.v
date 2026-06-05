@@ -7,6 +7,8 @@ module clock_amd_top(
     input  BTND,
     input  BTNC,
     input  [15:0] SW,
+    input  UART_RXD,
+    output UART_TXD,
     output [7:0] AN,
     output CA,
     output CB,
@@ -39,6 +41,15 @@ module clock_amd_top(
     wire notify_active;
     wire [1:0] notify_type;
     wire [2:0] notify_slot;
+    wire [2:0] comm_status;
+    wire comm_reply_mode;
+    wire [2:0] comm_reply_index;
+    wire [3:0] comm_selected_slot;
+    wire comm_message_valid;
+    wire [2:0] comm_scroll_line;
+    wire [151:0] comm_timestamp_ascii;
+    wire [6:0] comm_message_len;
+    wire [511:0] comm_message_window_ascii;
     wire [3:0] date_month_ten_bcd;
     wire [3:0] date_month_unit_bcd;
     wire [3:0] date_day_ten_bcd;
@@ -88,10 +99,21 @@ module clock_amd_top(
         .btn_down(BTND),
         .btn_center(BTNC),
         .sw(SW),
+        .uart_rx(UART_RXD),
+        .uart_tx(UART_TXD),
         .buzzer_on(buzzer_on),
         .countdown_run(countdown_run),
         .mode_state(mode_state),
         .setting_active(setting_active),
+        .comm_status(comm_status),
+        .comm_reply_mode(comm_reply_mode),
+        .comm_reply_index(comm_reply_index),
+        .comm_selected_slot(comm_selected_slot),
+        .comm_message_valid(comm_message_valid),
+        .comm_scroll_line(comm_scroll_line),
+        .comm_timestamp_ascii(comm_timestamp_ascii),
+        .comm_message_len(comm_message_len),
+        .comm_message_window_ascii(comm_message_window_ascii),
         .hour_format_12h_out(hour_format_12h),
         .notify_active(notify_active),
         .notify_type(notify_type),
@@ -192,6 +214,15 @@ module clock_amd_top(
         .countdown_min_unit_bcd(countdown_min_unit_bcd),
         .countdown_sec_ten_bcd(countdown_sec_ten_bcd),
         .countdown_sec_unit_bcd(countdown_sec_unit_bcd),
+        .comm_status(comm_status),
+        .comm_reply_mode(comm_reply_mode),
+        .comm_reply_index(comm_reply_index),
+        .comm_selected_slot(comm_selected_slot),
+        .comm_message_valid(comm_message_valid),
+        .comm_scroll_line(comm_scroll_line),
+        .comm_timestamp_ascii(comm_timestamp_ascii),
+        .comm_message_len(comm_message_len),
+        .comm_message_window_ascii(comm_message_window_ascii),
         .init_done(),
         .error(),
         .oled_scl(OLED_SCL),

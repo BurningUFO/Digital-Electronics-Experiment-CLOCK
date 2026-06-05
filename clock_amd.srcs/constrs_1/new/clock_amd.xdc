@@ -135,3 +135,10 @@ set_property IOSTANDARD LVCMOS33 [get_ports TMP_SCL]
 
 set_property PACKAGE_PIN C15 [get_ports TMP_SDA]
 set_property IOSTANDARD LVCMOS33 [get_ports TMP_SDA]
+
+# J6 USB-UART. C4 is FTDI TX into FPGA RX; D4 is FPGA TX into FTDI RX.
+set_property PACKAGE_PIN C4 [get_ports UART_RXD]
+set_property IOSTANDARD LVCMOS33 [get_ports UART_RXD]
+
+set_property PACKAGE_PIN D4 [get_ports UART_TXD]
+set_property IOSTANDARD LVCMOS33 [get_ports UART_TXD]

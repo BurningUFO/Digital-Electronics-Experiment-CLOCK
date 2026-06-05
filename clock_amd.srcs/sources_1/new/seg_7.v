@@ -19,6 +19,11 @@ module seg_7(
     localparam [5:0] SEG_CHAR_L     = 6'd29;
     localparam [5:0] SEG_CHAR_U     = 6'd30;
     localparam [5:0] SEG_CHAR_K     = 6'd31;
+    localparam [5:0] SEG_CHAR_M     = 6'd32;
+    localparam [5:0] SEG_CHAR_I     = 6'd33;
+    localparam [5:0] SEG_CHAR_G     = 6'd34;
+    localparam [5:0] SEG_CHAR_W     = 6'd35;
+    localparam [5:0] SEG_CHAR_EXCL  = 6'd36;
 
     // seg[6:0] maps to {g,f,e,d,c,b,a}; 1 means segment on before Nexys low-active inversion.
     always @(*) begin
@@ -50,6 +55,11 @@ module seg_7(
             SEG_CHAR_L:     seg = 7'b011_1000; // L
             SEG_CHAR_U:     seg = 7'b011_1110; // U
             SEG_CHAR_K:     seg = 7'b111_0110; // K approximated as H on seven-seg
+            SEG_CHAR_M:     seg = 7'b001_0101; // M approximated on seven-seg
+            SEG_CHAR_I:     seg = 7'b000_0110; // I approximated as 1
+            SEG_CHAR_G:     seg = 7'b111_1101; // G approximated as 6
+            SEG_CHAR_W:     seg = 7'b011_1110; // W approximated as U
+            SEG_CHAR_EXCL:  seg = 7'b000_0110; // ! approximated as 1
             default: seg = 7'b000_0000;
         endcase
     end

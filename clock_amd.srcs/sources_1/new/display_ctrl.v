@@ -3,6 +3,7 @@ module display_ctrl(
     input  setting_active,
     input  blink_hide,
     input  [2:0] field_index,
+    input  [2:0] comm_status,
     input  selected_alarm_enable,
     input  next_alarm_valid,
     input  countdown_run,
@@ -84,6 +85,11 @@ module display_ctrl(
     localparam [5:0] DISP_L     = 6'd29;
     localparam [5:0] DISP_U     = 6'd30;
     localparam [5:0] DISP_K     = 6'd31;
+    localparam [5:0] DISP_M     = 6'd32;
+    localparam [5:0] DISP_I     = 6'd33;
+    localparam [5:0] DISP_G     = 6'd34;
+    localparam [5:0] DISP_W     = 6'd35;
+    localparam [5:0] DISP_EXCL  = 6'd36;
 
     localparam MODE_NORMAL      = 3'b000;
     localparam MODE_TIME_SET    = 3'b001;
@@ -91,6 +97,7 @@ module display_ctrl(
     localparam MODE_HOUR_FORMAT = 3'b011;
     localparam MODE_COUNTDOWN   = 3'b100;
     localparam MODE_SCHEDULE    = 3'b101;
+    localparam MODE_COMM        = 3'b110;
 
     reg [5:0] mode_reg;
     reg [5:0] status_reg;
@@ -202,6 +209,56 @@ module display_ctrl(
                         3'd3: schedule_type_char = DISP_R;
                         3'd4: schedule_type_char = DISP_T;
                         default: schedule_type_char = DISP_1;
+                    endcase
+                end
+            endcase
+        end
+    endfunction
+
+    function [5:0] comm_status_char;
+        input [2:0] status;
+        input [1:0] char_index;
+        begin
+            comm_status_char = DISP_BLANK;
+            case (status)
+                3'd1: begin // WAIT
+                    case (char_index)
+                        2'd0: comm_status_char = DISP_W;
+                        2'd1: comm_status_char = DISP_A;
+                        2'd2: comm_status_char = DISP_I;
+                        default: comm_status_char = DISP_T;
+                    endcase
+                end
+                3'd2: begin // CONN
+                    case (char_index)
+                        2'd0: comm_status_char = DISP_C;
+                        2'd1: comm_status_char = DISP_O;
+                        2'd2: comm_status_char = DISP_N;
+                        default: comm_status_char = DISP_N;
+                    endcase
+                end
+                3'd3: begin // MSG!
+                    case (char_index)
+                        2'd0: comm_status_char = DISP_M;
+                        2'd1: comm_status_char = DISP_S;
+                        2'd2: comm_status_char = DISP_G;
+                        default: comm_status_char = DISP_EXCL;
+                    endcase
+                end
+                3'd4: begin // ERR
+                    case (char_index)
+                        2'd0: comm_status_char = DISP_E;
+                        2'd1: comm_status_char = DISP_R;
+                        2'd2: comm_status_char = DISP_R;
+                        default: comm_status_char = DISP_BLANK;
+                    endcase
+                end
+                default: begin // DISC
+                    case (char_index)
+                        2'd0: comm_status_char = DISP_D;
+                        2'd1: comm_status_char = DISP_I;
+                        2'd2: comm_status_char = DISP_S;
+                        default: comm_status_char = DISP_C;
                     endcase
                 end
             endcase
@@ -323,6 +380,17 @@ module display_ctrl(
                     hour_unit_reg = DISP_0;
                     hour_ten_reg  = DISP_0;
                 end
+            end
+
+            MODE_COMM: begin
+                mode_reg      = DISP_C;
+                status_reg    = DISP_O;
+                hour_ten_reg  = DISP_M;
+                hour_unit_reg = DISP_M;
+                min_ten_reg   = comm_status_char(comm_status, 2'd0);
+                min_unit_reg  = comm_status_char(comm_status, 2'd1);
+                sec_ten_reg   = comm_status_char(comm_status, 2'd2);
+                sec_unit_reg  = comm_status_char(comm_status, 2'd3);
             end
 
             default: begin

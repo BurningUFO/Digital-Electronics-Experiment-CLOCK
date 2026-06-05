@@ -33,6 +33,15 @@ module oled_ui_display (
     input  wire [3:0] countdown_min_unit_bcd,
     input  wire [3:0] countdown_sec_ten_bcd,
     input  wire [3:0] countdown_sec_unit_bcd,
+    input  wire [2:0] comm_status,
+    input  wire       comm_reply_mode,
+    input  wire [2:0] comm_reply_index,
+    input  wire [3:0] comm_selected_slot,
+    input  wire       comm_message_valid,
+    input  wire [2:0] comm_scroll_line,
+    input  wire [151:0] comm_timestamp_ascii,
+    input  wire [6:0]   comm_message_len,
+    input  wire [511:0] comm_message_window_ascii,
     output reg        init_done,
     output reg        error,
     inout  wire       oled_scl,
@@ -62,6 +71,12 @@ module oled_ui_display (
     localparam [1:0] NOTIFY_COUNTDOWN   = 2'd1;
     localparam [1:0] NOTIFY_ALARM       = 2'd2;
     localparam [1:0] NOTIFY_SCHEDULE    = 2'd3;
+    localparam [2:0] MODE_COMM          = 3'b110;
+    localparam [2:0] COMM_STATUS_DISC   = 3'd0;
+    localparam [2:0] COMM_STATUS_WAIT   = 3'd1;
+    localparam [2:0] COMM_STATUS_CONN   = 3'd2;
+    localparam [2:0] COMM_STATUS_MSG    = 3'd3;
+    localparam [2:0] COMM_STATUS_ERR    = 3'd4;
     localparam [7:0] POPUP_X_LEFT       = 8'd6;
     localparam [7:0] POPUP_X_RIGHT      = 8'd121;
     localparam [7:0] POPUP_Y_TOP        = 8'd12;
@@ -72,6 +87,11 @@ module oled_ui_display (
     reg [5:0]  init_index = 6'd0;
     reg [2:0]  page_index = 3'd0;
     reg [7:0]  step_index = 8'd0;
+    reg [1:0]  page_data_phase = 2'd0;
+    reg [2:0]  page_data_page = 3'd0;
+    reg [7:0]  page_data_col = 8'd0;
+    reg        page_data_edit = 1'b0;
+    reg [7:0]  page_data_byte = 8'd0;
     reg        waiting_done = 1'b0;
     reg [1:0]  ll_cmd_type = CMD_START;
     reg [7:0]  ll_cmd_data = 8'd0;
@@ -110,6 +130,21 @@ module oled_ui_display (
     reg [3:0]  render_countdown_min_unit_bcd = 4'd0;
     reg [3:0]  render_countdown_sec_ten_bcd = 4'd0;
     reg [3:0]  render_countdown_sec_unit_bcd = 4'd0;
+    reg [2:0]  render_comm_status = COMM_STATUS_DISC;
+    reg        render_comm_reply_mode = 1'b0;
+    reg [2:0]  render_comm_reply_index = 3'd0;
+    reg [3:0]  render_comm_selected_slot = 4'd0;
+    reg        render_comm_message_valid = 1'b0;
+    reg [2:0]  render_comm_scroll_line = 3'd0;
+    reg [151:0] render_comm_timestamp_ascii = {19{8'h20}};
+    reg [95:0]  render_comm_date_line_ascii = {12{8'h20}};
+    reg [95:0]  render_comm_time_line_ascii = {12{8'h20}};
+    reg [6:0]   render_comm_message_len = 7'd0;
+    reg [511:0] render_comm_message_window_ascii = {64{8'h20}};
+    reg [127:0] render_comm_msg_line0_ascii = {16{8'h20}};
+    reg [127:0] render_comm_msg_line1_ascii = {16{8'h20}};
+    reg [127:0] render_comm_msg_line2_ascii = {16{8'h20}};
+    reg [127:0] render_comm_msg_line3_ascii = {16{8'h20}};
     reg        frame_tick_toggle = 1'b0;
     reg        frame_tick_toggle_d = 1'b0;
 
@@ -207,7 +242,8 @@ module oled_ui_display (
                 3'b011: prev_mode = 3'b010;
                 3'b100: prev_mode = 3'b011;
                 3'b101: prev_mode = 3'b100;
-                default: prev_mode = 3'b101;
+                3'b110: prev_mode = 3'b101;
+                default: prev_mode = 3'b110;
             endcase
         end
     endfunction
@@ -221,6 +257,7 @@ module oled_ui_display (
                 3'b010: next_mode = 3'b011;
                 3'b011: next_mode = 3'b100;
                 3'b100: next_mode = 3'b101;
+                3'b101: next_mode = 3'b110;
                 default: next_mode = 3'b000;
             endcase
         end
@@ -232,6 +269,7 @@ module oled_ui_display (
             case (mode)
                 3'b001: mode_len = 3'd4;
                 3'b011: mode_len = 3'd4;
+                3'b110: mode_len = 3'd4;
                 default: mode_len = 3'd5;
             endcase
         end
@@ -246,7 +284,9 @@ module oled_ui_display (
                 3'b010: mode_label_ascii = {"A","L","A","R","M"};
                 3'b011: mode_label_ascii = {"H","O","U","R"," "};
                 3'b100: mode_label_ascii = {"C","O","U","N","T"};
-                default: mode_label_ascii = {"S","C","H","E","D"};
+                3'b101: mode_label_ascii = {"S","C","H","E","D"};
+                3'b110: mode_label_ascii = {"C","O","M","M"," "};
+                default: mode_label_ascii = {"C","O","M","M"," "};
             endcase
         end
     endfunction
@@ -326,13 +366,22 @@ module oled_ui_display (
                         default: mode_char = " ";
                     endcase
                 end
-                default: begin
+                3'b101: begin
                     case (index)
                         3'd0: mode_char = "S";
                         3'd1: mode_char = "C";
                         3'd2: mode_char = "H";
                         3'd3: mode_char = "E";
                         3'd4: mode_char = "D";
+                        default: mode_char = " ";
+                    endcase
+                end
+                default: begin
+                    case (index)
+                        3'd0: mode_char = "C";
+                        3'd1: mode_char = "O";
+                        3'd2: mode_char = "M";
+                        3'd3: mode_char = "M";
                         default: mode_char = " ";
                     endcase
                 end
@@ -402,6 +451,18 @@ module oled_ui_display (
                         3'd4: glyph_row = 8'b01000000;
                         3'd5: glyph_row = 8'b01000000;
                         3'd6: glyph_row = 8'b01000000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "G": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b01000000;
+                        3'd3: glyph_row = 8'b01001110;
+                        3'd4: glyph_row = 8'b01000010;
+                        3'd5: glyph_row = 8'b01000010;
+                        3'd6: glyph_row = 8'b00111100;
                         default: glyph_row = 8'b00000000;
                     endcase
                 end
@@ -558,6 +619,18 @@ module oled_ui_display (
                         3'd4: glyph_row = 8'b01011010;
                         3'd5: glyph_row = 8'b01100110;
                         3'd6: glyph_row = 8'b01000010;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "!": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00011000;
+                        3'd1: glyph_row = 8'b00011000;
+                        3'd2: glyph_row = 8'b00011000;
+                        3'd3: glyph_row = 8'b00011000;
+                        3'd4: glyph_row = 8'b00000000;
+                        3'd5: glyph_row = 8'b00011000;
+                        3'd6: glyph_row = 8'b00011000;
                         default: glyph_row = 8'b00000000;
                     endcase
                 end
@@ -864,6 +937,32 @@ module oled_ui_display (
         end
     endfunction
 
+    function [7:0] packed16_char;
+        input [127:0] text;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0:  packed16_char = text[127:120];
+                4'd1:  packed16_char = text[119:112];
+                4'd2:  packed16_char = text[111:104];
+                4'd3:  packed16_char = text[103:96];
+                4'd4:  packed16_char = text[95:88];
+                4'd5:  packed16_char = text[87:80];
+                4'd6:  packed16_char = text[79:72];
+                4'd7:  packed16_char = text[71:64];
+                4'd8:  packed16_char = text[63:56];
+                4'd9:  packed16_char = text[55:48];
+                4'd10: packed16_char = text[47:40];
+                4'd11: packed16_char = text[39:32];
+                4'd12: packed16_char = text[31:24];
+                4'd13: packed16_char = text[23:16];
+                4'd14: packed16_char = text[15:8];
+                4'd15: packed16_char = text[7:0];
+                default: packed16_char = " ";
+            endcase
+        end
+    endfunction
+
     function [7:0] packed9_char;
         input [71:0] text;
         input [3:0] index;
@@ -1046,6 +1145,357 @@ module oled_ui_display (
         end
     endfunction
 
+    function [7:0] comm_title_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_title_char = "C";
+                4'd1: comm_title_char = "L";
+                4'd2: comm_title_char = "O";
+                4'd3: comm_title_char = "C";
+                4'd4: comm_title_char = "K";
+                4'd5: comm_title_char = "L";
+                4'd6: comm_title_char = "I";
+                4'd7: comm_title_char = "N";
+                4'd8: comm_title_char = "K";
+                default: comm_title_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_status_text_char;
+        input [3:0] index;
+        begin
+            comm_status_text_char = " ";
+            case (render_comm_status)
+                COMM_STATUS_WAIT: begin
+                    case (index)
+                        4'd0: comm_status_text_char = "W";
+                        4'd1: comm_status_text_char = "A";
+                        4'd2: comm_status_text_char = "I";
+                        4'd3: comm_status_text_char = "T";
+                        default: comm_status_text_char = " ";
+                    endcase
+                end
+                COMM_STATUS_CONN: begin
+                    case (index)
+                        4'd0: comm_status_text_char = "C";
+                        4'd1: comm_status_text_char = "O";
+                        4'd2: comm_status_text_char = "N";
+                        4'd3: comm_status_text_char = "N";
+                        default: comm_status_text_char = " ";
+                    endcase
+                end
+                COMM_STATUS_MSG: begin
+                    case (index)
+                        4'd0: comm_status_text_char = "M";
+                        4'd1: comm_status_text_char = "S";
+                        4'd2: comm_status_text_char = "G";
+                        4'd3: comm_status_text_char = "!";
+                        default: comm_status_text_char = " ";
+                    endcase
+                end
+                COMM_STATUS_ERR: begin
+                    case (index)
+                        4'd0: comm_status_text_char = "E";
+                        4'd1: comm_status_text_char = "R";
+                        4'd2: comm_status_text_char = "R";
+                        default: comm_status_text_char = " ";
+                    endcase
+                end
+                default: begin
+                    case (index)
+                        4'd0: comm_status_text_char = "D";
+                        4'd1: comm_status_text_char = "I";
+                        4'd2: comm_status_text_char = "S";
+                        4'd3: comm_status_text_char = "C";
+                        default: comm_status_text_char = " ";
+                    endcase
+                end
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_hint_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_hint_char = "U";
+                4'd1: comm_hint_char = "S";
+                4'd2: comm_hint_char = "B";
+                4'd3: comm_hint_char = " ";
+                4'd4: comm_hint_char = "U";
+                4'd5: comm_hint_char = "A";
+                4'd6: comm_hint_char = "R";
+                4'd7: comm_hint_char = "T";
+                default: comm_hint_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_empty_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_empty_char = "N";
+                4'd1: comm_empty_char = "O";
+                4'd2: comm_empty_char = " ";
+                4'd3: comm_empty_char = "M";
+                4'd4: comm_empty_char = "S";
+                4'd5: comm_empty_char = "G";
+                default: comm_empty_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_reply_title_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_reply_title_char = "R";
+                4'd1: comm_reply_title_char = "E";
+                4'd2: comm_reply_title_char = "P";
+                4'd3: comm_reply_title_char = "L";
+                4'd4: comm_reply_title_char = "Y";
+                4'd5: comm_reply_title_char = " ";
+                4'd6: comm_reply_title_char = "M";
+                4'd7: comm_reply_title_char = "O";
+                4'd8: comm_reply_title_char = "D";
+                4'd9: comm_reply_title_char = "E";
+                default: comm_reply_title_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_reply_index_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_reply_index_char = "R";
+                4'd1: comm_reply_index_char = "0" + {5'd0, render_comm_reply_index};
+                default: comm_reply_index_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] preset_reply_char;
+        input [2:0] reply_index;
+        input [4:0] char_index;
+        begin
+            preset_reply_char = " ";
+            case (reply_index)
+                3'd0: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "O";
+                        5'd1: preset_reply_char = "K";
+                        5'd2: preset_reply_char = ",";
+                        5'd3: preset_reply_char = " ";
+                        5'd4: preset_reply_char = "r";
+                        5'd5: preset_reply_char = "e";
+                        5'd6: preset_reply_char = "c";
+                        5'd7: preset_reply_char = "e";
+                        5'd8: preset_reply_char = "i";
+                        5'd9: preset_reply_char = "v";
+                        5'd10: preset_reply_char = "e";
+                        5'd11: preset_reply_char = "d";
+                        5'd12: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd1: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "B";
+                        5'd1: preset_reply_char = "u";
+                        5'd2: preset_reply_char = "s";
+                        5'd3: preset_reply_char = "y";
+                        5'd4: preset_reply_char = " ";
+                        5'd5: preset_reply_char = "n";
+                        5'd6: preset_reply_char = "o";
+                        5'd7: preset_reply_char = "w";
+                        5'd8: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd2: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "W";
+                        5'd1: preset_reply_char = "i";
+                        5'd2: preset_reply_char = "l";
+                        5'd3: preset_reply_char = "l";
+                        5'd4: preset_reply_char = " ";
+                        5'd5: preset_reply_char = "c";
+                        5'd6: preset_reply_char = "h";
+                        5'd7: preset_reply_char = "e";
+                        5'd8: preset_reply_char = "c";
+                        5'd9: preset_reply_char = "k";
+                        5'd10: preset_reply_char = " ";
+                        5'd11: preset_reply_char = "l";
+                        5'd12: preset_reply_char = "a";
+                        5'd13: preset_reply_char = "t";
+                        5'd14: preset_reply_char = "e";
+                        5'd15: preset_reply_char = "r";
+                        5'd16: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd3: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "P";
+                        5'd1: preset_reply_char = "l";
+                        5'd2: preset_reply_char = "e";
+                        5'd3: preset_reply_char = "a";
+                        5'd4: preset_reply_char = "s";
+                        5'd5: preset_reply_char = "e";
+                        5'd6: preset_reply_char = " ";
+                        5'd7: preset_reply_char = "s";
+                        5'd8: preset_reply_char = "y";
+                        5'd9: preset_reply_char = "n";
+                        5'd10: preset_reply_char = "c";
+                        5'd11: preset_reply_char = " ";
+                        5'd12: preset_reply_char = "t";
+                        5'd13: preset_reply_char = "i";
+                        5'd14: preset_reply_char = "m";
+                        5'd15: preset_reply_char = "e";
+                        5'd16: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd4: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "S";
+                        5'd1: preset_reply_char = "y";
+                        5'd2: preset_reply_char = "s";
+                        5'd3: preset_reply_char = "t";
+                        5'd4: preset_reply_char = "e";
+                        5'd5: preset_reply_char = "m";
+                        5'd6: preset_reply_char = " ";
+                        5'd7: preset_reply_char = "n";
+                        5'd8: preset_reply_char = "o";
+                        5'd9: preset_reply_char = "r";
+                        5'd10: preset_reply_char = "m";
+                        5'd11: preset_reply_char = "a";
+                        5'd12: preset_reply_char = "l";
+                        5'd13: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd5: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "A";
+                        5'd1: preset_reply_char = "l";
+                        5'd2: preset_reply_char = "a";
+                        5'd3: preset_reply_char = "r";
+                        5'd4: preset_reply_char = "m";
+                        5'd5: preset_reply_char = " ";
+                        5'd6: preset_reply_char = "n";
+                        5'd7: preset_reply_char = "o";
+                        5'd8: preset_reply_char = "t";
+                        5'd9: preset_reply_char = "e";
+                        5'd10: preset_reply_char = "d";
+                        5'd11: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                3'd6: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "S";
+                        5'd1: preset_reply_char = "c";
+                        5'd2: preset_reply_char = "h";
+                        5'd3: preset_reply_char = "e";
+                        5'd4: preset_reply_char = "d";
+                        5'd5: preset_reply_char = "u";
+                        5'd6: preset_reply_char = "l";
+                        5'd7: preset_reply_char = "e";
+                        5'd8: preset_reply_char = " ";
+                        5'd9: preset_reply_char = "n";
+                        5'd10: preset_reply_char = "o";
+                        5'd11: preset_reply_char = "t";
+                        5'd12: preset_reply_char = "e";
+                        5'd13: preset_reply_char = "d";
+                        5'd14: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+                default: begin
+                    case (char_index)
+                        5'd0: preset_reply_char = "N";
+                        5'd1: preset_reply_char = "e";
+                        5'd2: preset_reply_char = "e";
+                        5'd3: preset_reply_char = "d";
+                        5'd4: preset_reply_char = " ";
+                        5'd5: preset_reply_char = "h";
+                        5'd6: preset_reply_char = "e";
+                        5'd7: preset_reply_char = "l";
+                        5'd8: preset_reply_char = "p";
+                        5'd9: preset_reply_char = ".";
+                        default: preset_reply_char = " ";
+                    endcase
+                end
+            endcase
+        end
+    endfunction
+
+    function [7:0] comm_reply_text_char;
+        input [3:0] line_index;
+        input [3:0] char_index;
+        reg [4:0] reply_char_index;
+        begin
+            reply_char_index = ({1'b0, line_index} * 5'd16) + {1'b0, char_index};
+            comm_reply_text_char = preset_reply_char(render_comm_reply_index, reply_char_index);
+        end
+    endfunction
+
+    function [7:0] comm_date_char;
+        input [3:0] index;
+        begin
+            comm_date_char = packed12_char(render_comm_date_line_ascii, index);
+        end
+    endfunction
+
+    function [7:0] comm_time_char;
+        input [3:0] index;
+        begin
+            comm_time_char = packed12_char(render_comm_time_line_ascii, index);
+        end
+    endfunction
+
+    function [7:0] comm_message_char;
+        input [2:0] line_index;
+        input [3:0] char_index;
+        reg [6:0] absolute_index;
+        begin
+            absolute_index = ({4'd0, render_comm_scroll_line} + {4'd0, line_index}) * 7'd16 +
+                             {3'd0, char_index};
+            if (absolute_index < render_comm_message_len) begin
+                case (line_index)
+                    3'd0: comm_message_char = packed16_char(render_comm_msg_line0_ascii, char_index);
+                    3'd1: comm_message_char = packed16_char(render_comm_msg_line1_ascii, char_index);
+                    3'd2: comm_message_char = packed16_char(render_comm_msg_line2_ascii, char_index);
+                    default: comm_message_char = packed16_char(render_comm_msg_line3_ascii, char_index);
+                endcase
+            end else begin
+                comm_message_char = " ";
+            end
+        end
+    endfunction
+
+    function [7:0] comm_slot_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: comm_slot_char = "S";
+                4'd1: comm_slot_char = "L";
+                4'd2: comm_slot_char = "O";
+                4'd3: comm_slot_char = "T";
+                4'd4: comm_slot_char = " ";
+                4'd5: comm_slot_char = (render_comm_selected_slot >= 4'd10) ? "1" : "0" + render_comm_selected_slot;
+                4'd6: comm_slot_char = (render_comm_selected_slot >= 4'd10) ?
+                                        ("0" + (render_comm_selected_slot - 4'd10)) : " ";
+                default: comm_slot_char = " ";
+            endcase
+        end
+    endfunction
+
     function [7:0] text_line_data;
         input [2:0] page;
         input [7:0] col;
@@ -1072,9 +1522,76 @@ module oled_ui_display (
                     4'd5: ch = format_char(char_index);
                     4'd6: ch = packed12_char(notify_text_ascii, char_index);
                     4'd7: ch = label_char(render_display_label_ascii, char_index[2:0]);
+                    4'd8: ch = comm_title_char(char_index);
+                    4'd9: ch = comm_status_text_char(char_index);
+                    4'd10: ch = comm_hint_char(char_index);
+                    4'd11: ch = comm_empty_char(char_index);
+                    4'd12: ch = comm_date_char(char_index);
+                    4'd13: ch = comm_time_char(char_index);
+                    4'd14: ch = comm_slot_char(char_index);
+                    4'd15: ch = comm_reply_title_char(char_index);
                     default: ch = " ";
                 endcase
                 text_line_data = glyph_column(ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [7:0] comm_message_line_data;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [2:0] line_index;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_message_line_data = 8'h00;
+            if ((page == target_page) && (col < 8'd128)) begin
+                char_index = {1'b0, col[6:3]};
+                glyph_col_index = col[2:0];
+                ch = comm_message_char(line_index, char_index);
+                comm_message_line_data = glyph_column(ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [7:0] comm_reply_line_data;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [3:0] line_index;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_reply_line_data = 8'h00;
+            if ((page == target_page) && (col < 8'd128)) begin
+                char_index = {1'b0, col[6:3]};
+                glyph_col_index = col[2:0];
+                ch = comm_reply_text_char(line_index, char_index);
+                comm_reply_line_data = glyph_column(ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [7:0] comm_reply_index_data;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [7:0] x_start;
+        reg [7:0] local_col;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_reply_index_data = 8'h00;
+            if ((page == target_page) && (col >= x_start) && (col < x_start + 8'd16)) begin
+                local_col = col - x_start;
+                char_index = {1'b0, local_col[7:3]};
+                glyph_col_index = local_col[2:0];
+                ch = comm_reply_index_char(char_index);
+                comm_reply_index_data = glyph_column(ch, glyph_col_index);
             end
         end
     endfunction
@@ -1112,35 +1629,111 @@ module oled_ui_display (
         begin
             data_byte = 8'h00;
 
-            case (page)
-                SIDE_PAGE: begin
-                    data_byte = text_line_data(page, col, SIDE_PAGE, 8'd2, 4'd9, 4'd0) |
-                                text_line_data(page, col, SIDE_PAGE, 8'd96, 4'd4, 4'd1);
+            if (display_mode == MODE_COMM) begin
+                if (render_comm_message_valid && render_comm_reply_mode) begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            data_byte = text_line_data(page, col, SIDE_PAGE, 8'd24, 4'd10, 4'd15);
+                        end
+                        SCHEDULE_PAGE: begin
+                            data_byte = comm_reply_index_data(page, col, SCHEDULE_PAGE, 8'd56);
+                        end
+                        CENTER_PAGE_BASE: begin
+                            data_byte = comm_reply_line_data(page, col, CENTER_PAGE_BASE, 4'd0);
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            data_byte = comm_reply_line_data(page, col, CENTER_PAGE_BASE + 1'b1, 4'd1);
+                        end
+                        ALARM_PAGE: begin
+                            data_byte = 8'h00;
+                        end
+                        STATUS_PAGE: begin
+                            data_byte = text_line_data(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd13);
+                        end
+                        default: begin
+                            data_byte = 8'h00;
+                        end
+                    endcase
+                end else if (render_comm_message_valid) begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            data_byte = text_line_data(page, col, SIDE_PAGE, 8'd16, 4'd12, 4'd12);
+                        end
+                        SCHEDULE_PAGE: begin
+                            data_byte = text_line_data(page, col, SCHEDULE_PAGE, 8'd24, 4'd10, 4'd13);
+                        end
+                        CENTER_PAGE_BASE: begin
+                            data_byte = comm_message_line_data(page, col, CENTER_PAGE_BASE, 3'd0);
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            data_byte = comm_message_line_data(page, col, CENTER_PAGE_BASE + 1'b1, 3'd1);
+                        end
+                        ALARM_PAGE: begin
+                            data_byte = comm_message_line_data(page, col, ALARM_PAGE, 3'd2);
+                        end
+                        STATUS_PAGE: begin
+                            data_byte = comm_message_line_data(page, col, STATUS_PAGE, 3'd3);
+                        end
+                        default: begin
+                            data_byte = 8'h00;
+                        end
+                    endcase
+                end else begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            data_byte = text_line_data(page, col, SIDE_PAGE, 8'd28, 4'd9, 4'd8);
+                        end
+                        SCHEDULE_PAGE: begin
+                            data_byte = text_line_data(page, col, SCHEDULE_PAGE, 8'd32, 4'd8, 4'd10);
+                        end
+                        CENTER_PAGE_BASE: begin
+                            data_byte = text_line_data(page, col, CENTER_PAGE_BASE, 8'd48, 4'd4, 4'd7);
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            data_byte = text_line_data(page, col, CENTER_PAGE_BASE + 1'b1, 8'd48, 4'd4, 4'd9);
+                        end
+                        ALARM_PAGE: begin
+                            data_byte = text_line_data(page, col, ALARM_PAGE, 8'd40, 4'd6, 4'd11);
+                        end
+                        STATUS_PAGE: begin
+                            data_byte = text_line_data(page, col, STATUS_PAGE, 8'd40, 4'd7, 4'd14);
+                        end
+                        default: begin
+                            data_byte = 8'h00;
+                        end
+                    endcase
                 end
-                SCHEDULE_PAGE: begin
-                    data_byte = text_line_data(page, col, SCHEDULE_PAGE, 8'd24, 4'd8, 4'd2);
-                end
-                CENTER_PAGE_BASE,
-                CENTER_PAGE_BASE + 1'b1: begin
-                    if (page == CENTER_PAGE_BASE) begin
-                        data_byte = text_line_data(page, col, CENTER_PAGE_BASE, 8'd44, 4'd5, 4'd7);
-                    end else if (edit_flag && (col >= 8'd44) && (col < 8'd84)) begin
-                        data_byte = 8'h01;
-                    end else begin
+            end else begin
+                case (page)
+                    SIDE_PAGE: begin
+                        data_byte = text_line_data(page, col, SIDE_PAGE, 8'd2, 4'd9, 4'd0) |
+                                    text_line_data(page, col, SIDE_PAGE, 8'd96, 4'd4, 4'd1);
+                    end
+                    SCHEDULE_PAGE: begin
+                        data_byte = text_line_data(page, col, SCHEDULE_PAGE, 8'd24, 4'd8, 4'd2);
+                    end
+                    CENTER_PAGE_BASE,
+                    CENTER_PAGE_BASE + 1'b1: begin
+                        if (page == CENTER_PAGE_BASE) begin
+                            data_byte = text_line_data(page, col, CENTER_PAGE_BASE, 8'd44, 4'd5, 4'd7);
+                        end else if (edit_flag && (col >= 8'd44) && (col < 8'd84)) begin
+                            data_byte = 8'h01;
+                        end else begin
+                            data_byte = 8'h00;
+                        end
+                    end
+                    ALARM_PAGE: begin
+                        data_byte = text_line_data(page, col, ALARM_PAGE, 8'd2, 4'd7, 4'd3) |
+                                    text_line_data(page, col, ALARM_PAGE, 8'd96, 4'd3, 4'd5);
+                    end
+                    STATUS_PAGE: begin
+                        data_byte = text_line_data(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd4);
+                    end
+                    default: begin
                         data_byte = 8'h00;
                     end
-                end
-                ALARM_PAGE: begin
-                    data_byte = text_line_data(page, col, ALARM_PAGE, 8'd2, 4'd7, 4'd3) |
-                                text_line_data(page, col, ALARM_PAGE, 8'd96, 4'd3, 4'd5);
-                end
-                STATUS_PAGE: begin
-                    data_byte = text_line_data(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd4);
-                end
-                default: begin
-                    data_byte = 8'h00;
-                end
-            endcase
+                endcase
+            end
 
             if (render_notify_active) begin
                 if ((page >= 3'd2) && (page <= 3'd6) &&
@@ -1201,6 +1794,21 @@ module oled_ui_display (
             render_countdown_min_unit_bcd <= 4'd0;
             render_countdown_sec_ten_bcd <= 4'd0;
             render_countdown_sec_unit_bcd <= 4'd0;
+            render_comm_status <= COMM_STATUS_DISC;
+            render_comm_reply_mode <= 1'b0;
+            render_comm_reply_index <= 3'd0;
+            render_comm_selected_slot <= 4'd0;
+            render_comm_message_valid <= 1'b0;
+            render_comm_scroll_line <= 3'd0;
+            render_comm_timestamp_ascii <= {19{8'h20}};
+            render_comm_date_line_ascii <= {12{8'h20}};
+            render_comm_time_line_ascii <= {12{8'h20}};
+            render_comm_message_len <= 7'd0;
+            render_comm_message_window_ascii <= {64{8'h20}};
+            render_comm_msg_line0_ascii <= {16{8'h20}};
+            render_comm_msg_line1_ascii <= {16{8'h20}};
+            render_comm_msg_line2_ascii <= {16{8'h20}};
+            render_comm_msg_line3_ascii <= {16{8'h20}};
             frame_tick_toggle_d <= 1'b0;
         end else begin
             if (mode_state != display_mode) begin
@@ -1241,6 +1849,101 @@ module oled_ui_display (
                 render_countdown_min_unit_bcd <= countdown_min_unit_bcd;
                 render_countdown_sec_ten_bcd <= countdown_sec_ten_bcd;
                 render_countdown_sec_unit_bcd <= countdown_sec_unit_bcd;
+                render_comm_status <= comm_status;
+                render_comm_reply_mode <= comm_reply_mode;
+                render_comm_reply_index <= comm_reply_index;
+                render_comm_selected_slot <= comm_selected_slot;
+                render_comm_message_valid <= comm_message_valid;
+                render_comm_scroll_line <= comm_scroll_line;
+                render_comm_timestamp_ascii <= comm_timestamp_ascii;
+                render_comm_date_line_ascii <= {"[",
+                                                comm_timestamp_ascii[0*8 +: 8],
+                                                comm_timestamp_ascii[1*8 +: 8],
+                                                comm_timestamp_ascii[2*8 +: 8],
+                                                comm_timestamp_ascii[3*8 +: 8],
+                                                comm_timestamp_ascii[4*8 +: 8],
+                                                comm_timestamp_ascii[5*8 +: 8],
+                                                comm_timestamp_ascii[6*8 +: 8],
+                                                comm_timestamp_ascii[7*8 +: 8],
+                                                comm_timestamp_ascii[8*8 +: 8],
+                                                comm_timestamp_ascii[9*8 +: 8],
+                                                "]"};
+                render_comm_time_line_ascii <= {"[",
+                                                comm_timestamp_ascii[11*8 +: 8],
+                                                comm_timestamp_ascii[12*8 +: 8],
+                                                comm_timestamp_ascii[13*8 +: 8],
+                                                comm_timestamp_ascii[14*8 +: 8],
+                                                comm_timestamp_ascii[15*8 +: 8],
+                                                comm_timestamp_ascii[16*8 +: 8],
+                                                comm_timestamp_ascii[17*8 +: 8],
+                                                comm_timestamp_ascii[18*8 +: 8],
+                                                "]"," "," "};
+                render_comm_message_len <= comm_message_len;
+                render_comm_message_window_ascii <= comm_message_window_ascii;
+                render_comm_msg_line0_ascii <= {comm_message_window_ascii[0*8 +: 8],
+                                                comm_message_window_ascii[1*8 +: 8],
+                                                comm_message_window_ascii[2*8 +: 8],
+                                                comm_message_window_ascii[3*8 +: 8],
+                                                comm_message_window_ascii[4*8 +: 8],
+                                                comm_message_window_ascii[5*8 +: 8],
+                                                comm_message_window_ascii[6*8 +: 8],
+                                                comm_message_window_ascii[7*8 +: 8],
+                                                comm_message_window_ascii[8*8 +: 8],
+                                                comm_message_window_ascii[9*8 +: 8],
+                                                comm_message_window_ascii[10*8 +: 8],
+                                                comm_message_window_ascii[11*8 +: 8],
+                                                comm_message_window_ascii[12*8 +: 8],
+                                                comm_message_window_ascii[13*8 +: 8],
+                                                comm_message_window_ascii[14*8 +: 8],
+                                                comm_message_window_ascii[15*8 +: 8]};
+                render_comm_msg_line1_ascii <= {comm_message_window_ascii[16*8 +: 8],
+                                                comm_message_window_ascii[17*8 +: 8],
+                                                comm_message_window_ascii[18*8 +: 8],
+                                                comm_message_window_ascii[19*8 +: 8],
+                                                comm_message_window_ascii[20*8 +: 8],
+                                                comm_message_window_ascii[21*8 +: 8],
+                                                comm_message_window_ascii[22*8 +: 8],
+                                                comm_message_window_ascii[23*8 +: 8],
+                                                comm_message_window_ascii[24*8 +: 8],
+                                                comm_message_window_ascii[25*8 +: 8],
+                                                comm_message_window_ascii[26*8 +: 8],
+                                                comm_message_window_ascii[27*8 +: 8],
+                                                comm_message_window_ascii[28*8 +: 8],
+                                                comm_message_window_ascii[29*8 +: 8],
+                                                comm_message_window_ascii[30*8 +: 8],
+                                                comm_message_window_ascii[31*8 +: 8]};
+                render_comm_msg_line2_ascii <= {comm_message_window_ascii[32*8 +: 8],
+                                                comm_message_window_ascii[33*8 +: 8],
+                                                comm_message_window_ascii[34*8 +: 8],
+                                                comm_message_window_ascii[35*8 +: 8],
+                                                comm_message_window_ascii[36*8 +: 8],
+                                                comm_message_window_ascii[37*8 +: 8],
+                                                comm_message_window_ascii[38*8 +: 8],
+                                                comm_message_window_ascii[39*8 +: 8],
+                                                comm_message_window_ascii[40*8 +: 8],
+                                                comm_message_window_ascii[41*8 +: 8],
+                                                comm_message_window_ascii[42*8 +: 8],
+                                                comm_message_window_ascii[43*8 +: 8],
+                                                comm_message_window_ascii[44*8 +: 8],
+                                                comm_message_window_ascii[45*8 +: 8],
+                                                comm_message_window_ascii[46*8 +: 8],
+                                                comm_message_window_ascii[47*8 +: 8]};
+                render_comm_msg_line3_ascii <= {comm_message_window_ascii[48*8 +: 8],
+                                                comm_message_window_ascii[49*8 +: 8],
+                                                comm_message_window_ascii[50*8 +: 8],
+                                                comm_message_window_ascii[51*8 +: 8],
+                                                comm_message_window_ascii[52*8 +: 8],
+                                                comm_message_window_ascii[53*8 +: 8],
+                                                comm_message_window_ascii[54*8 +: 8],
+                                                comm_message_window_ascii[55*8 +: 8],
+                                                comm_message_window_ascii[56*8 +: 8],
+                                                comm_message_window_ascii[57*8 +: 8],
+                                                comm_message_window_ascii[58*8 +: 8],
+                                                comm_message_window_ascii[59*8 +: 8],
+                                                comm_message_window_ascii[60*8 +: 8],
+                                                comm_message_window_ascii[61*8 +: 8],
+                                                comm_message_window_ascii[62*8 +: 8],
+                                                comm_message_window_ascii[63*8 +: 8]};
             end
         end
     end
@@ -1252,6 +1955,11 @@ module oled_ui_display (
             init_index    <= 6'd0;
             page_index    <= 3'd0;
             step_index    <= 8'd0;
+            page_data_phase <= 2'd0;
+            page_data_page  <= 3'd0;
+            page_data_col   <= 8'd0;
+            page_data_edit  <= 1'b0;
+            page_data_byte  <= 8'd0;
             waiting_done  <= 1'b0;
             ll_cmd_valid  <= 1'b0;
             ll_cmd_type   <= CMD_START;
@@ -1309,6 +2017,7 @@ module oled_ui_display (
                             ST_PAGE_DATA: begin
                                 if (step_index == 8'd131) begin
                                     step_index <= 8'd0;
+                                    page_data_phase <= 2'd0;
                                     if ((!init_done && (page_index == 3'd7)) ||
                                         (init_done && (page_index == ACTIVE_PAGE_LAST))) begin
                                         init_done  <= 1'b1;
@@ -1333,6 +2042,7 @@ module oled_ui_display (
             end else if (!ll_busy) begin
                 case (state)
                     ST_INIT: begin
+                        page_data_phase <= 2'd0;
                         case (step_index)
                             8'd0: issue_ll_cmd(CMD_START, 8'h00);
                             8'd1: issue_ll_cmd(CMD_WRITE, OLED_ADDR_WRITE);
@@ -1347,6 +2057,7 @@ module oled_ui_display (
                     end
 
                     ST_PAGE_ADDR: begin
+                        page_data_phase <= 2'd0;
                         case (step_index)
                             8'd0: issue_ll_cmd(CMD_START, 8'h00);
                             8'd1: issue_ll_cmd(CMD_WRITE, OLED_ADDR_WRITE);
@@ -1364,14 +2075,33 @@ module oled_ui_display (
 
                     ST_PAGE_DATA: begin
                         if (step_index == 8'd0) begin
+                            page_data_phase <= 2'd0;
                             issue_ll_cmd(CMD_START, 8'h00);
                         end else if (step_index == 8'd1) begin
+                            page_data_phase <= 2'd0;
                             issue_ll_cmd(CMD_WRITE, OLED_ADDR_WRITE);
                         end else if (step_index == 8'd2) begin
+                            page_data_phase <= 2'd0;
                             issue_ll_cmd(CMD_WRITE, 8'h40);
                         end else if (step_index >= 8'd3 && step_index <= 8'd130) begin
-                            issue_ll_cmd(CMD_WRITE, page_data(page_index, step_index - 8'd3, edit_active));
+                            case (page_data_phase)
+                                2'd0: begin
+                                    page_data_page <= page_index;
+                                    page_data_col  <= step_index - 8'd3;
+                                    page_data_edit <= edit_active;
+                                    page_data_phase <= 2'd1;
+                                end
+                                2'd1: begin
+                                    page_data_byte <= page_data(page_data_page, page_data_col, page_data_edit);
+                                    page_data_phase <= 2'd2;
+                                end
+                                default: begin
+                                    issue_ll_cmd(CMD_WRITE, page_data_byte);
+                                    page_data_phase <= 2'd0;
+                                end
+                            endcase
                         end else if (step_index == 8'd131) begin
+                            page_data_phase <= 2'd0;
                             issue_ll_cmd(CMD_STOP, 8'h00);
                         end else begin
                             state <= ST_ERROR;

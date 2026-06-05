@@ -27,6 +27,16 @@ module alarm_ctrl(
     input  [3:0] cur_min_unit_bcd,
     input  [3:0] cur_hour_unit_bcd,
     input  [3:0] cur_hour_ten_bcd,
+    input  pc_alarm_write_valid,
+    input  [2:0] pc_alarm_write_slot,
+    input  [3:0] pc_alarm_write_hour_ten_bcd,
+    input  [3:0] pc_alarm_write_hour_unit_bcd,
+    input  [3:0] pc_alarm_write_min_ten_bcd,
+    input  [3:0] pc_alarm_write_min_unit_bcd,
+    input  [3:0] pc_alarm_write_sec_ten_bcd,
+    input  [3:0] pc_alarm_write_sec_unit_bcd,
+    input  pc_alarm_write_enable,
+    input  [2:0] pc_alarm_read_slot,
     output [3:0] alarm_sec_ten_bcd,
     output [3:0] alarm_sec_unit_bcd,
     output [3:0] alarm_hour_ten_bcd,
@@ -34,6 +44,13 @@ module alarm_ctrl(
     output [3:0] alarm_min_ten_bcd,
     output [3:0] alarm_min_unit_bcd,
     output alarm_enable,
+    output [3:0] pc_alarm_read_hour_ten_bcd,
+    output [3:0] pc_alarm_read_hour_unit_bcd,
+    output [3:0] pc_alarm_read_min_ten_bcd,
+    output [3:0] pc_alarm_read_min_unit_bcd,
+    output [3:0] pc_alarm_read_sec_ten_bcd,
+    output [3:0] pc_alarm_read_sec_unit_bcd,
+    output pc_alarm_read_enable,
     output alarm_match,
     output alarm_beep,
     output [2:0] alarm_selected_slot,
@@ -377,6 +394,13 @@ module alarm_ctrl(
     assign alarm_min_ten_bcd   = {1'b0, alarm_min_ten_reg[selected_slot_reg]};
     assign alarm_min_unit_bcd  = alarm_min_unit_reg[selected_slot_reg];
     assign alarm_enable        = alarm_enable_reg[selected_slot_reg];
+    assign pc_alarm_read_hour_ten_bcd = {2'b00, alarm_hour_ten_reg[pc_alarm_read_slot]};
+    assign pc_alarm_read_hour_unit_bcd = alarm_hour_unit_reg[pc_alarm_read_slot];
+    assign pc_alarm_read_min_ten_bcd = {1'b0, alarm_min_ten_reg[pc_alarm_read_slot]};
+    assign pc_alarm_read_min_unit_bcd = alarm_min_unit_reg[pc_alarm_read_slot];
+    assign pc_alarm_read_sec_ten_bcd = {1'b0, alarm_sec_ten_reg[pc_alarm_read_slot]};
+    assign pc_alarm_read_sec_unit_bcd = alarm_sec_unit_reg[pc_alarm_read_slot];
+    assign pc_alarm_read_enable = alarm_enable_reg[pc_alarm_read_slot];
     assign alarm_match         = |match_mask;
     assign alarm_beep          = alarm_beep_reg;
     assign alarm_selected_slot = selected_slot_reg;
@@ -621,42 +645,44 @@ module alarm_ctrl(
                 match_d <= match_mask;
             end
 
-            if (alarm_slot_inc_pulse) begin
-                selected_slot_reg <= selected_slot_reg + 1'b1;
-            end else if (alarm_slot_dec_pulse) begin
-                selected_slot_reg <= selected_slot_reg - 1'b1;
-            end
+            if (!pc_alarm_write_valid) begin
+                if (alarm_slot_inc_pulse) begin
+                    selected_slot_reg <= selected_slot_reg + 1'b1;
+                end else if (alarm_slot_dec_pulse) begin
+                    selected_slot_reg <= selected_slot_reg - 1'b1;
+                end
 
-            if (alarm_enable_toggle_pulse) begin
-                alarm_enable_reg[selected_slot_reg] <= ~alarm_enable_reg[selected_slot_reg];
-            end else if (alarm_enable_inc_pulse) begin
-                alarm_enable_reg[selected_slot_reg] <= 1'b1;
-            end else if (alarm_enable_dec_pulse) begin
-                alarm_enable_reg[selected_slot_reg] <= 1'b0;
-            end
+                if (alarm_enable_toggle_pulse) begin
+                    alarm_enable_reg[selected_slot_reg] <= ~alarm_enable_reg[selected_slot_reg];
+                end else if (alarm_enable_inc_pulse) begin
+                    alarm_enable_reg[selected_slot_reg] <= 1'b1;
+                end else if (alarm_enable_dec_pulse) begin
+                    alarm_enable_reg[selected_slot_reg] <= 1'b0;
+                end
 
-            if (alarm_hour_inc_pulse) begin
-                alarm_hour_ten_reg[selected_slot_reg] <= hour_inc_value[5:4];
-                alarm_hour_unit_reg[selected_slot_reg] <= hour_inc_value[3:0];
-            end else if (alarm_hour_dec_pulse) begin
-                alarm_hour_ten_reg[selected_slot_reg] <= hour_dec_value[5:4];
-                alarm_hour_unit_reg[selected_slot_reg] <= hour_dec_value[3:0];
-            end
+                if (alarm_hour_inc_pulse) begin
+                    alarm_hour_ten_reg[selected_slot_reg] <= hour_inc_value[5:4];
+                    alarm_hour_unit_reg[selected_slot_reg] <= hour_inc_value[3:0];
+                end else if (alarm_hour_dec_pulse) begin
+                    alarm_hour_ten_reg[selected_slot_reg] <= hour_dec_value[5:4];
+                    alarm_hour_unit_reg[selected_slot_reg] <= hour_dec_value[3:0];
+                end
 
-            if (alarm_min_inc_pulse) begin
-                alarm_min_ten_reg[selected_slot_reg] <= min_inc_value[6:4];
-                alarm_min_unit_reg[selected_slot_reg] <= min_inc_value[3:0];
-            end else if (alarm_min_dec_pulse) begin
-                alarm_min_ten_reg[selected_slot_reg] <= min_dec_value[6:4];
-                alarm_min_unit_reg[selected_slot_reg] <= min_dec_value[3:0];
-            end
+                if (alarm_min_inc_pulse) begin
+                    alarm_min_ten_reg[selected_slot_reg] <= min_inc_value[6:4];
+                    alarm_min_unit_reg[selected_slot_reg] <= min_inc_value[3:0];
+                end else if (alarm_min_dec_pulse) begin
+                    alarm_min_ten_reg[selected_slot_reg] <= min_dec_value[6:4];
+                    alarm_min_unit_reg[selected_slot_reg] <= min_dec_value[3:0];
+                end
 
-            if (alarm_sec_inc_pulse) begin
-                alarm_sec_ten_reg[selected_slot_reg] <= sec_inc_value[6:4];
-                alarm_sec_unit_reg[selected_slot_reg] <= sec_inc_value[3:0];
-            end else if (alarm_sec_dec_pulse) begin
-                alarm_sec_ten_reg[selected_slot_reg] <= sec_dec_value[6:4];
-                alarm_sec_unit_reg[selected_slot_reg] <= sec_dec_value[3:0];
+                if (alarm_sec_inc_pulse) begin
+                    alarm_sec_ten_reg[selected_slot_reg] <= sec_inc_value[6:4];
+                    alarm_sec_unit_reg[selected_slot_reg] <= sec_inc_value[3:0];
+                end else if (alarm_sec_dec_pulse) begin
+                    alarm_sec_ten_reg[selected_slot_reg] <= sec_dec_value[6:4];
+                    alarm_sec_unit_reg[selected_slot_reg] <= sec_dec_value[3:0];
+                end
             end
 
             if (current_snooze_pulse) begin
@@ -666,6 +692,19 @@ module alarm_ctrl(
                 snooze_min_unit_reg[snooze_slot_index] <= snooze_target_hm[3:0];
                 snooze_sec_ten_reg[snooze_slot_index] <= cur_sec_ten_bcd[2:0];
                 snooze_sec_unit_reg[snooze_slot_index] <= cur_sec_unit_bcd;
+            end
+
+            if (pc_alarm_write_valid) begin
+                alarm_hour_ten_reg[pc_alarm_write_slot] <= pc_alarm_write_hour_ten_bcd[1:0];
+                alarm_hour_unit_reg[pc_alarm_write_slot] <= pc_alarm_write_hour_unit_bcd;
+                alarm_min_ten_reg[pc_alarm_write_slot] <= pc_alarm_write_min_ten_bcd[2:0];
+                alarm_min_unit_reg[pc_alarm_write_slot] <= pc_alarm_write_min_unit_bcd;
+                alarm_sec_ten_reg[pc_alarm_write_slot] <= pc_alarm_write_sec_ten_bcd[2:0];
+                alarm_sec_unit_reg[pc_alarm_write_slot] <= pc_alarm_write_sec_unit_bcd;
+                alarm_enable_reg[pc_alarm_write_slot] <= pc_alarm_write_enable;
+                pending_mask_reg[pc_alarm_write_slot] <= 1'b0;
+                snooze_active_reg[pc_alarm_write_slot] <= 1'b0;
+                match_d[pc_alarm_write_slot] <= 1'b0;
             end
 
             if (current_event_clear_pulse) begin

@@ -22,6 +22,17 @@ module schedule_ctrl(
     input  [3:0] cur_min_unit_bcd,
     input  [3:0] cur_hour_ten_bcd,
     input  [3:0] cur_hour_unit_bcd,
+    input  pc_sched_write_valid,
+    input  [2:0] pc_sched_write_slot,
+    input  [3:0] pc_sched_write_hour_ten_bcd,
+    input  [3:0] pc_sched_write_hour_unit_bcd,
+    input  [3:0] pc_sched_write_min_ten_bcd,
+    input  [3:0] pc_sched_write_min_unit_bcd,
+    input  [3:0] pc_sched_write_sec_ten_bcd,
+    input  [3:0] pc_sched_write_sec_unit_bcd,
+    input  [2:0] pc_sched_write_type,
+    input  pc_sched_write_enable,
+    input  [2:0] pc_sched_read_slot,
     output [3:0] schedule_sec_ten_bcd,
     output [3:0] schedule_sec_unit_bcd,
     output [3:0] schedule_min_ten_bcd,
@@ -30,6 +41,14 @@ module schedule_ctrl(
     output [3:0] schedule_hour_unit_bcd,
     output selected_schedule_enable,
     output [2:0] selected_schedule_type,
+    output [3:0] pc_sched_read_hour_ten_bcd,
+    output [3:0] pc_sched_read_hour_unit_bcd,
+    output [3:0] pc_sched_read_min_ten_bcd,
+    output [3:0] pc_sched_read_min_unit_bcd,
+    output [3:0] pc_sched_read_sec_ten_bcd,
+    output [3:0] pc_sched_read_sec_unit_bcd,
+    output [2:0] pc_sched_read_type,
+    output pc_sched_read_enable,
     output [2:0] schedule_selected_slot,
     output [7:0] schedule_slot_enable_mask,
     output [7:0] schedule_slot_selected_mask,
@@ -301,6 +320,14 @@ module schedule_ctrl(
     assign schedule_hour_unit_bcd = hour_unit_reg[selected_slot_reg];
     assign selected_schedule_enable = enable_mask_reg[selected_slot_reg];
     assign selected_schedule_type = type_reg[selected_slot_reg];
+    assign pc_sched_read_hour_ten_bcd = {2'b00, hour_ten_reg[pc_sched_read_slot]};
+    assign pc_sched_read_hour_unit_bcd = hour_unit_reg[pc_sched_read_slot];
+    assign pc_sched_read_min_ten_bcd = {1'b0, min_ten_reg[pc_sched_read_slot]};
+    assign pc_sched_read_min_unit_bcd = min_unit_reg[pc_sched_read_slot];
+    assign pc_sched_read_sec_ten_bcd = {1'b0, sec_ten_reg[pc_sched_read_slot]};
+    assign pc_sched_read_sec_unit_bcd = sec_unit_reg[pc_sched_read_slot];
+    assign pc_sched_read_type = type_reg[pc_sched_read_slot];
+    assign pc_sched_read_enable = enable_mask_reg[pc_sched_read_slot];
     assign schedule_selected_slot = selected_slot_reg;
     assign schedule_slot_enable_mask = enable_mask_reg;
     assign schedule_slot_selected_mask = selected_slot_mask;
@@ -380,12 +407,14 @@ module schedule_ctrl(
             pending_mask_reg <= pending_next;
             match_d <= match_mask_reg;
 
-            if (|schedule_slot_switches) begin
-                selected_slot_reg <= switch_selected_slot;
-            end else if (schedule_slot_inc_pulse) begin
-                selected_slot_reg <= selected_slot_reg + 1'b1;
-            end else if (schedule_slot_dec_pulse) begin
-                selected_slot_reg <= selected_slot_reg - 1'b1;
+            if (!pc_sched_write_valid) begin
+                if (|schedule_slot_switches) begin
+                    selected_slot_reg <= switch_selected_slot;
+                end else if (schedule_slot_inc_pulse) begin
+                    selected_slot_reg <= selected_slot_reg + 1'b1;
+                end else if (schedule_slot_dec_pulse) begin
+                    selected_slot_reg <= selected_slot_reg - 1'b1;
+                end
             end
 
             if (scan_index_reg == 4'd8) begin
@@ -457,42 +486,55 @@ module schedule_ctrl(
                 end
             end
 
-            if (schedule_hour_inc_pulse) begin
-                hour_ten_reg[selected_slot_reg] <= hour_inc_value[5:4];
-                hour_unit_reg[selected_slot_reg] <= hour_inc_value[3:0];
-            end else if (schedule_hour_dec_pulse) begin
-                hour_ten_reg[selected_slot_reg] <= hour_dec_value[5:4];
-                hour_unit_reg[selected_slot_reg] <= hour_dec_value[3:0];
-            end
+            if (pc_sched_write_valid) begin
+                hour_ten_reg[pc_sched_write_slot] <= pc_sched_write_hour_ten_bcd[1:0];
+                hour_unit_reg[pc_sched_write_slot] <= pc_sched_write_hour_unit_bcd;
+                min_ten_reg[pc_sched_write_slot] <= pc_sched_write_min_ten_bcd[2:0];
+                min_unit_reg[pc_sched_write_slot] <= pc_sched_write_min_unit_bcd;
+                sec_ten_reg[pc_sched_write_slot] <= pc_sched_write_sec_ten_bcd[2:0];
+                sec_unit_reg[pc_sched_write_slot] <= pc_sched_write_sec_unit_bcd;
+                type_reg[pc_sched_write_slot] <= pc_sched_write_type;
+                enable_mask_reg[pc_sched_write_slot] <= pc_sched_write_enable;
+                pending_mask_reg[pc_sched_write_slot] <= 1'b0;
+                match_d[pc_sched_write_slot] <= 1'b0;
+            end else begin
+                if (schedule_hour_inc_pulse) begin
+                    hour_ten_reg[selected_slot_reg] <= hour_inc_value[5:4];
+                    hour_unit_reg[selected_slot_reg] <= hour_inc_value[3:0];
+                end else if (schedule_hour_dec_pulse) begin
+                    hour_ten_reg[selected_slot_reg] <= hour_dec_value[5:4];
+                    hour_unit_reg[selected_slot_reg] <= hour_dec_value[3:0];
+                end
 
-            if (schedule_min_inc_pulse) begin
-                min_ten_reg[selected_slot_reg] <= min_inc_value[6:4];
-                min_unit_reg[selected_slot_reg] <= min_inc_value[3:0];
-            end else if (schedule_min_dec_pulse) begin
-                min_ten_reg[selected_slot_reg] <= min_dec_value[6:4];
-                min_unit_reg[selected_slot_reg] <= min_dec_value[3:0];
-            end
+                if (schedule_min_inc_pulse) begin
+                    min_ten_reg[selected_slot_reg] <= min_inc_value[6:4];
+                    min_unit_reg[selected_slot_reg] <= min_inc_value[3:0];
+                end else if (schedule_min_dec_pulse) begin
+                    min_ten_reg[selected_slot_reg] <= min_dec_value[6:4];
+                    min_unit_reg[selected_slot_reg] <= min_dec_value[3:0];
+                end
 
-            if (schedule_sec_inc_pulse) begin
-                sec_ten_reg[selected_slot_reg] <= sec_inc_value[6:4];
-                sec_unit_reg[selected_slot_reg] <= sec_inc_value[3:0];
-            end else if (schedule_sec_dec_pulse) begin
-                sec_ten_reg[selected_slot_reg] <= sec_dec_value[6:4];
-                sec_unit_reg[selected_slot_reg] <= sec_dec_value[3:0];
-            end
+                if (schedule_sec_inc_pulse) begin
+                    sec_ten_reg[selected_slot_reg] <= sec_inc_value[6:4];
+                    sec_unit_reg[selected_slot_reg] <= sec_inc_value[3:0];
+                end else if (schedule_sec_dec_pulse) begin
+                    sec_ten_reg[selected_slot_reg] <= sec_dec_value[6:4];
+                    sec_unit_reg[selected_slot_reg] <= sec_dec_value[3:0];
+                end
 
-            if (schedule_type_inc_pulse) begin
-                type_reg[selected_slot_reg] <= type_reg[selected_slot_reg] + 1'b1;
-            end else if (schedule_type_dec_pulse) begin
-                type_reg[selected_slot_reg] <= type_reg[selected_slot_reg] - 1'b1;
-            end
+                if (schedule_type_inc_pulse) begin
+                    type_reg[selected_slot_reg] <= type_reg[selected_slot_reg] + 1'b1;
+                end else if (schedule_type_dec_pulse) begin
+                    type_reg[selected_slot_reg] <= type_reg[selected_slot_reg] - 1'b1;
+                end
 
-            if (schedule_enable_toggle_pulse) begin
-                enable_mask_reg[selected_slot_reg] <= ~enable_mask_reg[selected_slot_reg];
-            end else if (schedule_enable_inc_pulse) begin
-                enable_mask_reg[selected_slot_reg] <= 1'b1;
-            end else if (schedule_enable_dec_pulse) begin
-                enable_mask_reg[selected_slot_reg] <= 1'b0;
+                if (schedule_enable_toggle_pulse) begin
+                    enable_mask_reg[selected_slot_reg] <= ~enable_mask_reg[selected_slot_reg];
+                end else if (schedule_enable_inc_pulse) begin
+                    enable_mask_reg[selected_slot_reg] <= 1'b1;
+                end else if (schedule_enable_dec_pulse) begin
+                    enable_mask_reg[selected_slot_reg] <= 1'b0;
+                end
             end
         end
     end

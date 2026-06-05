@@ -8,10 +8,21 @@ module clock(
     input btn_down,
     input btn_center,
     input [15:0] sw,
+    input uart_rx,
+    output uart_tx,
     output buzzer_on,
     output countdown_run,
     output [2:0] mode_state,
     output setting_active,
+    output [2:0] comm_status,
+    output comm_reply_mode,
+    output [2:0] comm_reply_index,
+    output [3:0] comm_selected_slot,
+    output comm_message_valid,
+    output [2:0] comm_scroll_line,
+    output [151:0] comm_timestamp_ascii,
+    output [6:0] comm_message_len,
+    output [511:0] comm_message_window_ascii,
     output hour_format_12h_out,
     output notify_active,
     output [1:0] notify_type,
@@ -55,6 +66,72 @@ module clock(
     wire [3:0] date_month_unit;
     wire [3:0] date_day_ten;
     wire [3:0] date_day_unit;
+    wire [3:0] date_year_thousand;
+    wire [3:0] date_year_hundred;
+    wire [3:0] date_year_ten;
+    wire [3:0] date_year_unit;
+    wire pc_time_load_valid;
+    wire [3:0] pc_hour_ten_bcd;
+    wire [3:0] pc_hour_unit_bcd;
+    wire [3:0] pc_min_ten_bcd;
+    wire [3:0] pc_min_unit_bcd;
+    wire [3:0] pc_sec_ten_bcd;
+    wire [3:0] pc_sec_unit_bcd;
+    wire pc_date_load_valid;
+    wire [3:0] pc_year_thousand_bcd;
+    wire [3:0] pc_year_hundred_bcd;
+    wire [3:0] pc_year_ten_bcd;
+    wire [3:0] pc_year_unit_bcd;
+    wire [3:0] pc_month_ten_bcd;
+    wire [3:0] pc_month_unit_bcd;
+    wire [3:0] pc_day_ten_bcd;
+    wire [3:0] pc_day_unit_bcd;
+    wire [2:0] pc_weekday;
+    wire pc_alarm_write_valid;
+    wire [2:0] pc_alarm_write_slot;
+    wire [3:0] pc_alarm_write_hour_ten_bcd;
+    wire [3:0] pc_alarm_write_hour_unit_bcd;
+    wire [3:0] pc_alarm_write_min_ten_bcd;
+    wire [3:0] pc_alarm_write_min_unit_bcd;
+    wire [3:0] pc_alarm_write_sec_ten_bcd;
+    wire [3:0] pc_alarm_write_sec_unit_bcd;
+    wire pc_alarm_write_enable;
+    wire [2:0] pc_alarm_read_slot;
+    wire [3:0] pc_alarm_read_hour_ten_bcd;
+    wire [3:0] pc_alarm_read_hour_unit_bcd;
+    wire [3:0] pc_alarm_read_min_ten_bcd;
+    wire [3:0] pc_alarm_read_min_unit_bcd;
+    wire [3:0] pc_alarm_read_sec_ten_bcd;
+    wire [3:0] pc_alarm_read_sec_unit_bcd;
+    wire pc_alarm_read_enable;
+    wire pc_sched_write_valid;
+    wire [2:0] pc_sched_write_slot;
+    wire [3:0] pc_sched_write_hour_ten_bcd;
+    wire [3:0] pc_sched_write_hour_unit_bcd;
+    wire [3:0] pc_sched_write_min_ten_bcd;
+    wire [3:0] pc_sched_write_min_unit_bcd;
+    wire [3:0] pc_sched_write_sec_ten_bcd;
+    wire [3:0] pc_sched_write_sec_unit_bcd;
+    wire [2:0] pc_sched_write_type;
+    wire pc_sched_write_enable;
+    wire [2:0] pc_sched_read_slot;
+    wire [3:0] pc_sched_read_hour_ten_bcd;
+    wire [3:0] pc_sched_read_hour_unit_bcd;
+    wire [3:0] pc_sched_read_min_ten_bcd;
+    wire [3:0] pc_sched_read_min_unit_bcd;
+    wire [3:0] pc_sched_read_sec_ten_bcd;
+    wire [3:0] pc_sched_read_sec_unit_bcd;
+    wire [2:0] pc_sched_read_type;
+    wire pc_sched_read_enable;
+    wire pc_count_load_valid;
+    wire [3:0] pc_count_hour_ten_bcd;
+    wire [3:0] pc_count_hour_unit_bcd;
+    wire [3:0] pc_count_min_ten_bcd;
+    wire [3:0] pc_count_min_unit_bcd;
+    wire [3:0] pc_count_sec_ten_bcd;
+    wire [3:0] pc_count_sec_unit_bcd;
+    wire pc_count_start_pulse;
+    wire pc_count_stop_pulse;
     wire [5:0] sec_u_disp;
     wire [5:0] sec_t_disp;
     wire [5:0] min_u_disp;
@@ -70,6 +147,7 @@ module clock(
     wire mode_hour_format;
     wire mode_countdown;
     wire mode_schedule;
+    wire mode_comm;
     wire blink_hide;
     wire [2:0] field_index;
     wire value_inc_pulse;
@@ -220,6 +298,7 @@ module clock(
         .btn_center(btn_center),
         .sw(sw),
         .interaction_lock(notify_active),
+        .mode_nav_lock(mode_comm & comm_reply_mode),
         .mode_state(mode_state),
         .setting_active(setting_active),
         .field_index(field_index),
@@ -239,6 +318,7 @@ module clock(
     assign mode_hour_format  = (mode_state == 3'b011);
     assign mode_countdown    = (mode_state == 3'b100);
     assign mode_schedule     = (mode_state == 3'b101);
+    assign mode_comm         = (mode_state == 3'b110);
     assign dp_indicator   = mode_alarm
                             ? ((setting_active && (field_index == 3'd4) && blink_hide)
                                ? 1'b0 : alarm_enable)
@@ -304,7 +384,8 @@ module clock(
                                           hour_t_disp, hour_u_disp,
                                           min_t_disp, min_u_disp,
                                           sec_t_disp, sec_u_disp};
-    assign dp_mask                     = mode_schedule
+    assign dp_mask                     = mode_comm ? 8'b0000_0000 :
+                                         mode_schedule
                                           ? {1'b0,
                                              (setting_active ? selected_schedule_enable : next_schedule_valid_raw),
                                              6'b000000}
@@ -344,6 +425,121 @@ module clock(
     assign slot_led_mask               = mode_alarm ? alarm_led_mask :
                                           mode_schedule ? schedule_led_mask :
                                           8'b0000_0000;
+
+    comm_ctrl u_comm_ctrl(
+        .clk(clk),
+        .tick_1k(tick_1k),
+        .rst(rst),
+        .mode_comm(mode_comm & ~notify_active),
+        .mode_state(mode_state),
+        .sw(sw),
+        .btn_up_pulse(btn_up_pulse_raw),
+        .btn_down_pulse(btn_down_pulse_raw),
+        .btn_center_pulse(btn_center_pulse_raw),
+        .btn_right_pulse(btn_right_pulse_raw),
+        .uart_rx(uart_rx),
+        .countdown_run(countdown_run),
+        .cur_year_thousand_bcd(date_year_thousand),
+        .cur_year_hundred_bcd(date_year_hundred),
+        .cur_year_ten_bcd(date_year_ten),
+        .cur_year_unit_bcd(date_year_unit),
+        .cur_month_ten_bcd(date_month_ten),
+        .cur_month_unit_bcd(date_month_unit),
+        .cur_day_ten_bcd(date_day_ten),
+        .cur_day_unit_bcd(date_day_unit),
+        .cur_weekday(date_weekday),
+        .cur_hour_ten_bcd(hour_t_time),
+        .cur_hour_unit_bcd(hour_u_time),
+        .cur_min_ten_bcd(min_t_time),
+        .cur_min_unit_bcd(min_u_time),
+        .cur_sec_ten_bcd(sec_t_time),
+        .cur_sec_unit_bcd(sec_u_time),
+        .alarm_read_slot(pc_alarm_read_slot),
+        .alarm_read_hour_ten_bcd(pc_alarm_read_hour_ten_bcd),
+        .alarm_read_hour_unit_bcd(pc_alarm_read_hour_unit_bcd),
+        .alarm_read_min_ten_bcd(pc_alarm_read_min_ten_bcd),
+        .alarm_read_min_unit_bcd(pc_alarm_read_min_unit_bcd),
+        .alarm_read_sec_ten_bcd(pc_alarm_read_sec_ten_bcd),
+        .alarm_read_sec_unit_bcd(pc_alarm_read_sec_unit_bcd),
+        .alarm_read_enable(pc_alarm_read_enable),
+        .sched_read_slot(pc_sched_read_slot),
+        .sched_read_hour_ten_bcd(pc_sched_read_hour_ten_bcd),
+        .sched_read_hour_unit_bcd(pc_sched_read_hour_unit_bcd),
+        .sched_read_min_ten_bcd(pc_sched_read_min_ten_bcd),
+        .sched_read_min_unit_bcd(pc_sched_read_min_unit_bcd),
+        .sched_read_sec_ten_bcd(pc_sched_read_sec_ten_bcd),
+        .sched_read_sec_unit_bcd(pc_sched_read_sec_unit_bcd),
+        .sched_read_type(pc_sched_read_type),
+        .sched_read_enable(pc_sched_read_enable),
+        .count_hour_ten_bcd(countdown_hour_ten),
+        .count_hour_unit_bcd(countdown_hour_unit),
+        .count_min_ten_bcd(countdown_min_ten),
+        .count_min_unit_bcd(countdown_min_unit),
+        .count_sec_ten_bcd(countdown_sec_ten),
+        .count_sec_unit_bcd(countdown_sec_unit),
+        .uart_tx(uart_tx),
+        .pc_time_load_valid(pc_time_load_valid),
+        .pc_hour_ten_bcd(pc_hour_ten_bcd),
+        .pc_hour_unit_bcd(pc_hour_unit_bcd),
+        .pc_min_ten_bcd(pc_min_ten_bcd),
+        .pc_min_unit_bcd(pc_min_unit_bcd),
+        .pc_sec_ten_bcd(pc_sec_ten_bcd),
+        .pc_sec_unit_bcd(pc_sec_unit_bcd),
+        .pc_date_load_valid(pc_date_load_valid),
+        .pc_year_thousand_bcd(pc_year_thousand_bcd),
+        .pc_year_hundred_bcd(pc_year_hundred_bcd),
+        .pc_year_ten_bcd(pc_year_ten_bcd),
+        .pc_year_unit_bcd(pc_year_unit_bcd),
+        .pc_month_ten_bcd(pc_month_ten_bcd),
+        .pc_month_unit_bcd(pc_month_unit_bcd),
+        .pc_day_ten_bcd(pc_day_ten_bcd),
+        .pc_day_unit_bcd(pc_day_unit_bcd),
+        .pc_weekday(pc_weekday),
+        .pc_alarm_write_valid(pc_alarm_write_valid),
+        .pc_alarm_write_slot(pc_alarm_write_slot),
+        .pc_alarm_write_hour_ten_bcd(pc_alarm_write_hour_ten_bcd),
+        .pc_alarm_write_hour_unit_bcd(pc_alarm_write_hour_unit_bcd),
+        .pc_alarm_write_min_ten_bcd(pc_alarm_write_min_ten_bcd),
+        .pc_alarm_write_min_unit_bcd(pc_alarm_write_min_unit_bcd),
+        .pc_alarm_write_sec_ten_bcd(pc_alarm_write_sec_ten_bcd),
+        .pc_alarm_write_sec_unit_bcd(pc_alarm_write_sec_unit_bcd),
+        .pc_alarm_write_enable(pc_alarm_write_enable),
+        .pc_alarm_read_slot(pc_alarm_read_slot),
+        .pc_sched_write_valid(pc_sched_write_valid),
+        .pc_sched_write_slot(pc_sched_write_slot),
+        .pc_sched_write_hour_ten_bcd(pc_sched_write_hour_ten_bcd),
+        .pc_sched_write_hour_unit_bcd(pc_sched_write_hour_unit_bcd),
+        .pc_sched_write_min_ten_bcd(pc_sched_write_min_ten_bcd),
+        .pc_sched_write_min_unit_bcd(pc_sched_write_min_unit_bcd),
+        .pc_sched_write_sec_ten_bcd(pc_sched_write_sec_ten_bcd),
+        .pc_sched_write_sec_unit_bcd(pc_sched_write_sec_unit_bcd),
+        .pc_sched_write_type(pc_sched_write_type),
+        .pc_sched_write_enable(pc_sched_write_enable),
+        .pc_sched_read_slot(pc_sched_read_slot),
+        .pc_count_load_valid(pc_count_load_valid),
+        .pc_count_hour_ten_bcd(pc_count_hour_ten_bcd),
+        .pc_count_hour_unit_bcd(pc_count_hour_unit_bcd),
+        .pc_count_min_ten_bcd(pc_count_min_ten_bcd),
+        .pc_count_min_unit_bcd(pc_count_min_unit_bcd),
+        .pc_count_sec_ten_bcd(pc_count_sec_ten_bcd),
+        .pc_count_sec_unit_bcd(pc_count_sec_unit_bcd),
+        .pc_count_start_pulse(pc_count_start_pulse),
+        .pc_count_stop_pulse(pc_count_stop_pulse),
+        .comm_status(comm_status),
+        .comm_reply_mode(comm_reply_mode),
+        .comm_reply_index(comm_reply_index),
+        .comm_reply_text_ascii(),
+        .comm_reply_text_len(),
+        .comm_selected_slot(comm_selected_slot),
+        .comm_message_valid(comm_message_valid),
+        .comm_message_unread(),
+        .comm_message_count(),
+        .comm_unread_count(),
+        .comm_scroll_line(comm_scroll_line),
+        .comm_timestamp_ascii(comm_timestamp_ascii),
+        .comm_message_len(comm_message_len),
+        .comm_message_window_ascii(comm_message_window_ascii)
+    );
 
     // Register public next-event outputs to keep OLED render timing local.
     always @(posedge clk or negedge rst) begin
@@ -386,6 +582,13 @@ module clock(
         .dec_hour_pulse(time_hour_dec_pulse),
         .add_min_pulse(time_min_inc_pulse),
         .dec_min_pulse(time_min_dec_pulse),
+        .pc_time_load_valid(pc_time_load_valid),
+        .pc_hour_ten_bcd(pc_hour_ten_bcd),
+        .pc_hour_unit_bcd(pc_hour_unit_bcd),
+        .pc_min_ten_bcd(pc_min_ten_bcd),
+        .pc_min_unit_bcd(pc_min_unit_bcd),
+        .pc_sec_ten_bcd(pc_sec_ten_bcd),
+        .pc_sec_unit_bcd(pc_sec_unit_bcd),
         .sec_unit_bcd(sec_u_time),
         .sec_ten_bcd(sec_t_time),
         .min_unit_bcd(min_u_time),
@@ -404,6 +607,20 @@ module clock(
         .day_dec_pulse(date_day_dec_pulse),
         .weekday_inc_pulse(date_weekday_inc_pulse),
         .weekday_dec_pulse(date_weekday_dec_pulse),
+        .pc_date_load_valid(pc_date_load_valid),
+        .pc_year_thousand_bcd(pc_year_thousand_bcd),
+        .pc_year_hundred_bcd(pc_year_hundred_bcd),
+        .pc_year_ten_bcd(pc_year_ten_bcd),
+        .pc_year_unit_bcd(pc_year_unit_bcd),
+        .pc_month_ten_bcd(pc_month_ten_bcd),
+        .pc_month_unit_bcd(pc_month_unit_bcd),
+        .pc_day_ten_bcd(pc_day_ten_bcd),
+        .pc_day_unit_bcd(pc_day_unit_bcd),
+        .pc_weekday(pc_weekday),
+        .year_thousand_bcd(date_year_thousand),
+        .year_hundred_bcd(date_year_hundred),
+        .year_ten_bcd(date_year_ten),
+        .year_unit_bcd(date_year_unit),
         .month_ten_bcd(date_month_ten),
         .month_unit_bcd(date_month_unit),
         .day_ten_bcd(date_day_ten),
@@ -459,6 +676,16 @@ module clock(
         .cur_min_unit_bcd(min_u_time),
         .cur_hour_unit_bcd(hour_u_time),
         .cur_hour_ten_bcd(hour_t_time),
+        .pc_alarm_write_valid(pc_alarm_write_valid),
+        .pc_alarm_write_slot(pc_alarm_write_slot),
+        .pc_alarm_write_hour_ten_bcd(pc_alarm_write_hour_ten_bcd),
+        .pc_alarm_write_hour_unit_bcd(pc_alarm_write_hour_unit_bcd),
+        .pc_alarm_write_min_ten_bcd(pc_alarm_write_min_ten_bcd),
+        .pc_alarm_write_min_unit_bcd(pc_alarm_write_min_unit_bcd),
+        .pc_alarm_write_sec_ten_bcd(pc_alarm_write_sec_ten_bcd),
+        .pc_alarm_write_sec_unit_bcd(pc_alarm_write_sec_unit_bcd),
+        .pc_alarm_write_enable(pc_alarm_write_enable),
+        .pc_alarm_read_slot(pc_alarm_read_slot),
         .alarm_sec_ten_bcd(alarm_sec_ten),
         .alarm_sec_unit_bcd(alarm_sec_unit),
         .alarm_hour_ten_bcd(alarm_hour_ten),
@@ -466,6 +693,13 @@ module clock(
         .alarm_min_ten_bcd(alarm_min_ten),
         .alarm_min_unit_bcd(alarm_min_unit),
         .alarm_enable(alarm_enable),
+        .pc_alarm_read_hour_ten_bcd(pc_alarm_read_hour_ten_bcd),
+        .pc_alarm_read_hour_unit_bcd(pc_alarm_read_hour_unit_bcd),
+        .pc_alarm_read_min_ten_bcd(pc_alarm_read_min_ten_bcd),
+        .pc_alarm_read_min_unit_bcd(pc_alarm_read_min_unit_bcd),
+        .pc_alarm_read_sec_ten_bcd(pc_alarm_read_sec_ten_bcd),
+        .pc_alarm_read_sec_unit_bcd(pc_alarm_read_sec_unit_bcd),
+        .pc_alarm_read_enable(pc_alarm_read_enable),
         .alarm_match(alarm_match),
         .alarm_beep(alarm_beep_legacy),
         .alarm_selected_slot(alarm_selected_slot),
@@ -496,6 +730,15 @@ module clock(
         .sec_dec_pulse(countdown_sec_dec_pulse),
         .countdown_start_pulse(countdown_start_pulse),
         .countdown_stop_pulse(countdown_stop_pulse),
+        .pc_count_load_valid(pc_count_load_valid),
+        .pc_count_hour_ten_bcd(pc_count_hour_ten_bcd),
+        .pc_count_hour_unit_bcd(pc_count_hour_unit_bcd),
+        .pc_count_min_ten_bcd(pc_count_min_ten_bcd),
+        .pc_count_min_unit_bcd(pc_count_min_unit_bcd),
+        .pc_count_sec_ten_bcd(pc_count_sec_ten_bcd),
+        .pc_count_sec_unit_bcd(pc_count_sec_unit_bcd),
+        .pc_count_start_pulse(pc_count_start_pulse),
+        .pc_count_stop_pulse(pc_count_stop_pulse),
         .countdown_run(countdown_run),
         .countdown_done_pulse(countdown_done_pulse),
         .hour_ten_bcd(countdown_hour_ten),
@@ -511,7 +754,7 @@ module clock(
         .rst(rst),
         .schedule_slot_inc_pulse(schedule_slot_inc_pulse),
         .schedule_slot_dec_pulse(schedule_slot_dec_pulse),
-        .schedule_slot_switches(sw[7:0]),
+        .schedule_slot_switches(mode_schedule ? sw[7:0] : 8'd0),
         .schedule_hour_inc_pulse(schedule_hour_inc_pulse),
         .schedule_hour_dec_pulse(schedule_hour_dec_pulse),
         .schedule_min_inc_pulse(schedule_min_inc_pulse),
@@ -530,6 +773,17 @@ module clock(
         .cur_min_unit_bcd(min_u_time),
         .cur_hour_ten_bcd(hour_t_time),
         .cur_hour_unit_bcd(hour_u_time),
+        .pc_sched_write_valid(pc_sched_write_valid),
+        .pc_sched_write_slot(pc_sched_write_slot),
+        .pc_sched_write_hour_ten_bcd(pc_sched_write_hour_ten_bcd),
+        .pc_sched_write_hour_unit_bcd(pc_sched_write_hour_unit_bcd),
+        .pc_sched_write_min_ten_bcd(pc_sched_write_min_ten_bcd),
+        .pc_sched_write_min_unit_bcd(pc_sched_write_min_unit_bcd),
+        .pc_sched_write_sec_ten_bcd(pc_sched_write_sec_ten_bcd),
+        .pc_sched_write_sec_unit_bcd(pc_sched_write_sec_unit_bcd),
+        .pc_sched_write_type(pc_sched_write_type),
+        .pc_sched_write_enable(pc_sched_write_enable),
+        .pc_sched_read_slot(pc_sched_read_slot),
         .schedule_sec_ten_bcd(schedule_sec_ten),
         .schedule_sec_unit_bcd(schedule_sec_unit),
         .schedule_min_ten_bcd(schedule_min_ten),
@@ -538,6 +792,14 @@ module clock(
         .schedule_hour_unit_bcd(schedule_hour_unit),
         .selected_schedule_enable(selected_schedule_enable),
         .selected_schedule_type(selected_schedule_type),
+        .pc_sched_read_hour_ten_bcd(pc_sched_read_hour_ten_bcd),
+        .pc_sched_read_hour_unit_bcd(pc_sched_read_hour_unit_bcd),
+        .pc_sched_read_min_ten_bcd(pc_sched_read_min_ten_bcd),
+        .pc_sched_read_min_unit_bcd(pc_sched_read_min_unit_bcd),
+        .pc_sched_read_sec_ten_bcd(pc_sched_read_sec_ten_bcd),
+        .pc_sched_read_sec_unit_bcd(pc_sched_read_sec_unit_bcd),
+        .pc_sched_read_type(pc_sched_read_type),
+        .pc_sched_read_enable(pc_sched_read_enable),
         .schedule_selected_slot(schedule_selected_slot),
         .schedule_slot_enable_mask(schedule_slot_enable_mask),
         .schedule_slot_selected_mask(schedule_slot_selected_mask),
@@ -585,6 +847,7 @@ module clock(
         .setting_active(setting_active),
         .blink_hide(blink_hide),
         .field_index(field_index),
+        .comm_status(comm_status),
         .selected_alarm_enable(alarm_enable),
         .next_alarm_valid(next_alarm_valid_raw),
         .countdown_run(countdown_run),

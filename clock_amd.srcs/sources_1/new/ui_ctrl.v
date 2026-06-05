@@ -9,6 +9,7 @@ module ui_ctrl(
     input  btn_center,
     input  [15:0] sw,
     input  interaction_lock,
+    input  mode_nav_lock,
     output reg [2:0] mode_state,
     output setting_active,
     output reg [2:0] field_index,
@@ -28,6 +29,7 @@ module ui_ctrl(
     localparam MODE_HOUR_FORMAT = 3'b011;
     localparam MODE_COUNTDOWN   = 3'b100;
     localparam MODE_SCHEDULE    = 3'b101;
+    localparam MODE_COMM        = 3'b110;
     localparam integer BLINK_HALF_MS = 9'd250;
 
     wire blink_active;
@@ -35,7 +37,8 @@ module ui_ctrl(
     reg [8:0] blink_cnt;
     reg setting_active_d;
 
-    assign setting_active = (mode_state == MODE_SCHEDULE) ? ((|sw[7:0]) | sw[15]) : sw[0];
+    assign setting_active = (mode_state == MODE_COMM) ? 1'b0 :
+                            (mode_state == MODE_SCHEDULE) ? ((|sw[7:0]) | sw[15]) : sw[0];
     assign blink_active = interaction_lock |
                           setting_active |
                           (mode_state == MODE_ALARM) |
@@ -50,6 +53,7 @@ module ui_ctrl(
                 MODE_ALARM:       next_mode = MODE_HOUR_FORMAT;
                 MODE_HOUR_FORMAT: next_mode = MODE_COUNTDOWN;
                 MODE_COUNTDOWN:   next_mode = MODE_SCHEDULE;
+                MODE_SCHEDULE:    next_mode = MODE_COMM;
                 default:          next_mode = MODE_NORMAL;
             endcase
         end
@@ -64,7 +68,8 @@ module ui_ctrl(
                 MODE_HOUR_FORMAT: prev_mode = MODE_ALARM;
                 MODE_COUNTDOWN:   prev_mode = MODE_HOUR_FORMAT;
                 MODE_SCHEDULE:    prev_mode = MODE_COUNTDOWN;
-                default:          prev_mode = MODE_SCHEDULE;
+                MODE_COMM:        prev_mode = MODE_SCHEDULE;
+                default:          prev_mode = MODE_COMM;
             endcase
         end
     endfunction
@@ -79,6 +84,7 @@ module ui_ctrl(
                 MODE_HOUR_FORMAT: max_field_index = 3'd0;
                 MODE_COUNTDOWN:   max_field_index = 3'd2;
                 MODE_SCHEDULE:    max_field_index = sw[15] ? 3'd0 : 3'd2;
+                MODE_COMM:        max_field_index = 3'd0;
                 default:          max_field_index = 3'd0;
             endcase
         end
@@ -172,9 +178,9 @@ module ui_ctrl(
             end else begin
                 field_index <= 3'd0;
 
-                if (btn_left_pulse) begin
+                if (!mode_nav_lock && btn_left_pulse) begin
                     mode_state <= prev_mode(mode_state);
-                end else if (btn_right_pulse) begin
+                end else if (!mode_nav_lock && btn_right_pulse) begin
                     mode_state <= next_mode(mode_state);
                 end else if (mode_state == MODE_COUNTDOWN) begin
                     if (btn_up_pulse) begin
