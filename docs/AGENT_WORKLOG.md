@@ -1060,3 +1060,69 @@ Phase:
 建议提交信息:
 
 - `feat(pc): add bilingual ClockLink Studio UI`
+
+### 2026-06-06 0214 - Phase 9 - PC GUI 体验优化
+
+Phase:
+
+- Phase 9：PC 软件界面体验优化
+
+完成内容:
+
+- 将通信日志从独立页签改为窗口底部全局日志区域，操作 `连接与消息` 和 `功能控制` 时都能实时看到请求和回复。
+- 为底部日志新增 `缩小日志 / 默认大小 / 放大日志` 三档按钮，便于在演示操作和调试日志之间切换空间。
+- 在 `连接与消息` 页中部新增聊天式互动记录，PC 发送内容右侧显示，FPGA/mock 回复左侧显示，系统提示居中显示。
+- 聊天记录增加时间戳、浅色背景区分和回车发送消息。
+- 更新 PC 软件 README 和设计文档，说明新 GUI 布局。
+- 重新打包 `software/clocklink_studio/dist/ClockLinkStudio.exe`。
+
+修改文件:
+
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/README.md`
+- `docs/ClockLink_Studio_PC_Software_Design.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m py_compile main.py desktop.py ui/main_window.py transport/mock_transport.py transport/serial_transport.py`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python -m PyInstaller --noconfirm ClockLinkStudio.spec`
+- `cd software/clocklink_studio; Start-Process .\dist\ClockLinkStudio.exe --self-test ...`
+- `git diff --check`
+
+检查结果:
+
+- Python 编译检查通过。
+- `desktop.py --self-test` 通过。
+- `python -m pytest` 通过，15 个测试全部通过。
+- PyInstaller 成功重建 `dist/ClockLinkStudio.exe`。
+- exe 自测退出码为 `0`。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+- 本阶段未运行 Vivado，因为只修改 PC GUI 和文档，不涉及 HDL、XDC 或综合路径。
+
+未完成/阻塞:
+
+- 尚未在真实 Nexys A7 上验证串口模式和异步 `REPLY/EVENT` 持续监听体验。
+
+风险:
+
+- 当前聊天记录以同步命令返回为主；真实串口主动事件的后台监听仍是后续增强项。
+- `dist/ClockLinkStudio.exe` 是本地打包产物，当前仍不强制纳入 Git 提交。
+
+下一阶段计划:
+
+- 连接真实板卡后，用新版 exe 验证聊天记录、底部日志和 COMM 模式消息链路。
+
+建议提交信息:
+
+- `feat(pc): improve ClockLink Studio chat and log layout`

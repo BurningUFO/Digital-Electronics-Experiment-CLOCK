@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from protocol.codec import FrameError, hex_to_ascii_text, parse_payload
 
 
@@ -34,7 +36,6 @@ TEXT = {
         "language": "界面语言",
         "tab_connect": "连接与消息",
         "tab_control": "功能控制",
-        "tab_log": "通信日志",
         "session": "连接测试",
         "hello": "握手",
         "ping": "连通测试",
@@ -43,6 +44,7 @@ TEXT = {
         "sync": "同步电脑时间",
         "get": "读取",
         "message": "发送消息",
+        "chat_history": "聊天记录",
         "send": "发送到 FPGA",
         "slot": "槽位",
         "msg_get": "读取消息",
@@ -60,10 +62,20 @@ TEXT = {
         "count_status": "查询状态",
         "enable_sched": "启用",
         "type": "类型",
+        "log_title": "通信日志",
+        "log_smaller": "缩小日志",
+        "log_default": "默认大小",
+        "log_larger": "放大日志",
         "log_started": "ClockLink Studio 已启动",
         "message_text": "消息正文",
         "decode_error": "消息解码失败",
         "error_prefix": "错误",
+        "pc_label": "我（PC）",
+        "fpga_label": "板子（FPGA）",
+        "system_label": "系统",
+        "empty_message": "请输入消息内容。",
+        "message_stored": "消息已发送，FPGA 返回",
+        "no_message": "该槽位暂无消息。",
     },
     "en": {
         "title": "ClockLink Studio",
@@ -71,7 +83,6 @@ TEXT = {
         "language": "Language",
         "tab_connect": "Connect",
         "tab_control": "Control",
-        "tab_log": "Log",
         "session": "Session",
         "hello": "HELLO",
         "ping": "PING",
@@ -80,6 +91,7 @@ TEXT = {
         "sync": "SYNC",
         "get": "GET",
         "message": "Message",
+        "chat_history": "Chat",
         "send": "SEND",
         "slot": "Slot",
         "msg_get": "MSG GET",
@@ -97,10 +109,20 @@ TEXT = {
         "count_status": "STATUS",
         "enable_sched": "Enable",
         "type": "Type",
+        "log_title": "Communication Log",
+        "log_smaller": "Smaller Log",
+        "log_default": "Default",
+        "log_larger": "Larger Log",
         "log_started": "ClockLink Studio started",
         "message_text": "message-text",
         "decode_error": "message-text decode error",
         "error_prefix": "ERROR",
+        "pc_label": "Me (PC)",
+        "fpga_label": "Board (FPGA)",
+        "system_label": "System",
+        "empty_message": "Enter a message first.",
+        "message_stored": "Message sent, FPGA replied",
+        "no_message": "No message in this slot.",
     },
 }
 
@@ -140,6 +162,8 @@ class ClockLinkWindow:
         labels: dict[str, object] = {}
         tab_ids: dict[str, object] = {}
         schedule_type_values: list[str] = []
+        log_height_ratios = (0.30, 0.48, 0.64)
+        log_height_index = tk.IntVar(value=1)
 
         def tr(key: str) -> str:
             return TEXT[current_language()][key]
@@ -152,6 +176,19 @@ class ClockLinkWindow:
             log.insert("end", text + "\n")
             log.see("end")
             log.configure(state="disabled")
+
+        def append_chat(sender_key: str, text: str) -> None:
+            tag = {
+                "pc_label": "chat_pc",
+                "fpga_label": "chat_fpga",
+                "system_label": "chat_system",
+            }.get(sender_key, "chat_system")
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            sender = tr(sender_key)
+            chat.configure(state="normal")
+            chat.insert("end", f"{sender}  {timestamp}\n{text}\n\n", (tag,))
+            chat.see("end")
+            chat.configure(state="disabled")
 
         def show_frame(label: str, frame) -> None:
             line = f"{label}: {frame.seq_hex} {frame.cmd} {frame.payload}"
@@ -179,7 +216,21 @@ class ClockLinkWindow:
             run_action("time-get", self.client.time_get)
 
         def send_message() -> None:
-            run_action("message", lambda: self.client.send_message(message_var.get()))
+            text = message_var.get().strip()
+            if not text:
+                append_chat("system_label", tr("empty_message"))
+                return
+            append_chat("pc_label", text)
+            try:
+                frame = self.client.send_message(text)
+                show_frame("message", frame)
+                append_chat("fpga_label", f"{tr('message_stored')}: {frame.cmd} {frame.payload}")
+                message_var.set("")
+            except Exception as exc:
+                status_var.set(str(exc))
+                append_log(f"{tr('error_prefix')} message: {exc}")
+                append_chat("system_label", str(exc))
+                messagebox.showerror("ClockLink", str(exc))
 
         def get_message() -> None:
             frame = self.client.get_message(msg_slot_var.get())
@@ -187,9 +238,14 @@ class ClockLinkWindow:
             payload = parse_payload(frame.payload)
             if payload.get("valid") == "1" and "text" in payload:
                 try:
-                    append_log(f"{tr('message_text')}: {hex_to_ascii_text(payload['text'])}")
+                    decoded = hex_to_ascii_text(payload["text"])
+                    append_log(f"{tr('message_text')}: {decoded}")
+                    append_chat("fpga_label", decoded)
                 except FrameError as exc:
                     append_log(f"{tr('decode_error')}: {exc}")
+                    append_chat("system_label", f"{tr('decode_error')}: {exc}")
+            else:
+                append_chat("system_label", tr("no_message"))
 
         def alarm_set() -> None:
             run_action(
@@ -230,6 +286,18 @@ class ClockLinkWindow:
         def count_status() -> None:
             run_action("count-status", self.client.count_status)
 
+        def set_log_height(index: int) -> None:
+            log_height_index.set(index)
+            root.update_idletasks()
+            pane_height = max(vertical_pane.winfo_height(), root.winfo_height() - 48, 520)
+            target = int(pane_height * log_height_ratios[index])
+            max_sash = max(240, pane_height - 100)
+            sash_position = min(max(220, pane_height - target), max_sash)
+            try:
+                vertical_pane.sashpos(0, sash_position)
+            except tk.TclError:
+                pass
+
         def schedule_type_display_values(lang: str) -> list[str]:
             return [f"{index}: {label}" for index, label in SCHEDULE_TYPE_LABELS[lang].items()]
 
@@ -254,7 +322,6 @@ class ClockLinkWindow:
             status_var.set(TEXT[lang]["ready"] if status_var.get() in ("Ready", "就绪") else status_var.get())
             tabs.tab(tab_ids["connect"], text=tr("tab_connect"))
             tabs.tab(tab_ids["control"], text=tr("tab_control"))
-            tabs.tab(tab_ids["log"], text=tr("tab_log"))
             for key, widget in labels.items():
                 widget.configure(text=tr(key))
             update_schedule_type_text()
@@ -278,25 +345,31 @@ class ClockLinkWindow:
         )
         language_box.grid(row=0, column=2, sticky="e")
 
-        tabs = ttk.Notebook(root)
-        tabs.grid(row=1, column=0, sticky="nsew", padx=8, pady=4)
+        vertical_pane = tk.PanedWindow(root, orient=tk.VERTICAL, sashwidth=6, sashrelief=tk.RAISED)
+        vertical_pane.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
+
+        top_area = ttk.Frame(vertical_pane)
+        bottom_area = ttk.Frame(vertical_pane)
+        vertical_pane.add(top_area, minsize=260)
+        vertical_pane.add(bottom_area, minsize=90)
+        top_area.columnconfigure(0, weight=1)
+        top_area.rowconfigure(0, weight=1)
+        bottom_area.columnconfigure(0, weight=1)
+        bottom_area.rowconfigure(1, weight=1)
+
+        tabs = ttk.Notebook(top_area)
+        tabs.grid(row=0, column=0, sticky="nsew")
 
         main_tab = ttk.Frame(tabs, padding=8)
         control_tab = ttk.Frame(tabs, padding=8)
-        log_tab = ttk.Frame(tabs, padding=8)
         tabs.add(main_tab)
         tabs.add(control_tab)
-        tabs.add(log_tab)
         tab_ids["connect"] = main_tab
         tab_ids["control"] = control_tab
-        tab_ids["log"] = log_tab
 
         for col in range(4):
             main_tab.columnconfigure(col, weight=1)
             control_tab.columnconfigure(col, weight=1)
-        main_tab.rowconfigure(4, weight=1)
-        log_tab.rowconfigure(0, weight=1)
-        log_tab.columnconfigure(0, weight=1)
 
         labels["session"] = ttk.Label(main_tab)
         labels["session"].grid(row=0, column=0, sticky="w")
@@ -318,16 +391,54 @@ class ClockLinkWindow:
 
         labels["message"] = ttk.Label(main_tab)
         labels["message"].grid(row=4, column=0, sticky="nw", pady=(12, 0))
-        ttk.Entry(main_tab, textvariable=message_var).grid(row=5, column=0, columnspan=3, sticky="ew", padx=2, pady=2)
+        message_entry = ttk.Entry(main_tab, textvariable=message_var)
+        message_entry.grid(row=5, column=0, columnspan=3, sticky="ew", padx=2, pady=2)
+        message_entry.bind("<Return>", lambda _event: send_message())
         labels["send"] = ttk.Button(main_tab, command=send_message)
         labels["send"].grid(row=5, column=3, sticky="ew", padx=2, pady=2)
+        labels["chat_history"] = ttk.Label(main_tab)
+        labels["chat_history"].grid(row=6, column=0, sticky="nw", padx=2, pady=(8, 2))
+        chat = scrolledtext.ScrolledText(main_tab, height=9, state="disabled", wrap="word")
+        chat.grid(row=7, column=0, columnspan=4, sticky="nsew", padx=2, pady=2)
+        chat.tag_configure(
+            "chat_pc",
+            justify="right",
+            lmargin1=120,
+            lmargin2=120,
+            rmargin=8,
+            spacing1=4,
+            spacing3=8,
+            background="#e8f1ff",
+        )
+        chat.tag_configure(
+            "chat_fpga",
+            justify="left",
+            lmargin1=8,
+            lmargin2=8,
+            rmargin=120,
+            spacing1=4,
+            spacing3=8,
+            background="#edf7ed",
+        )
+        chat.tag_configure(
+            "chat_system",
+            justify="center",
+            lmargin1=48,
+            lmargin2=48,
+            rmargin=48,
+            spacing1=4,
+            spacing3=8,
+            foreground="#606060",
+            background="#f5f5f5",
+        )
+        main_tab.rowconfigure(7, weight=1)
         labels["slot"] = ttk.Label(main_tab)
-        labels["slot"].grid(row=6, column=0, sticky="w", padx=2, pady=2)
+        labels["slot"].grid(row=8, column=0, sticky="w", padx=2, pady=2)
         ttk.Spinbox(main_tab, from_=0, to=15, textvariable=msg_slot_var, width=5).grid(
-            row=6, column=1, sticky="w", padx=2, pady=2
+            row=8, column=1, sticky="w", padx=2, pady=2
         )
         labels["msg_get"] = ttk.Button(main_tab, command=get_message)
-        labels["msg_get"].grid(row=6, column=2, sticky="ew", padx=2, pady=2)
+        labels["msg_get"].grid(row=8, column=2, sticky="ew", padx=2, pady=2)
 
         labels["alarm"] = ttk.Label(control_tab)
         labels["alarm"].grid(row=0, column=0, sticky="w")
@@ -384,10 +495,24 @@ class ClockLinkWindow:
         labels["count_status"] = ttk.Button(control_tab, command=count_status)
         labels["count_status"].grid(row=8, column=3, sticky="ew", padx=2, pady=2)
 
-        log = scrolledtext.ScrolledText(log_tab, height=18, state="disabled")
-        log.grid(row=0, column=0, sticky="nsew")
+        log_toolbar = ttk.Frame(bottom_area)
+        log_toolbar.grid(row=0, column=0, sticky="ew")
+        log_toolbar.columnconfigure(0, weight=1)
+        labels["log_title"] = ttk.Label(log_toolbar)
+        labels["log_title"].grid(row=0, column=0, sticky="w")
+        labels["log_smaller"] = ttk.Button(log_toolbar, command=lambda: set_log_height(0))
+        labels["log_smaller"].grid(row=0, column=1, sticky="e", padx=2)
+        labels["log_default"] = ttk.Button(log_toolbar, command=lambda: set_log_height(1))
+        labels["log_default"].grid(row=0, column=2, sticky="e", padx=2)
+        labels["log_larger"] = ttk.Button(log_toolbar, command=lambda: set_log_height(2))
+        labels["log_larger"].grid(row=0, column=3, sticky="e", padx=2)
+
+        log = scrolledtext.ScrolledText(bottom_area, height=8, state="disabled", wrap="none")
+        log.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
 
         language_display_var.trace_add("write", apply_language)
         apply_language()
         append_log(tr("log_started"))
+        append_chat("system_label", tr("log_started"))
+        root.after(100, lambda: set_log_height(log_height_index.get()))
         root.mainloop()
