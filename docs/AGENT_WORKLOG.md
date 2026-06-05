@@ -1126,3 +1126,75 @@ Phase:
 建议提交信息:
 
 - `feat(pc): improve ClockLink Studio chat and log layout`
+
+### 2026-06-06 0229 - Phase 9 - PC GUI 现代化美化
+
+Phase:
+
+- Phase 9：PC 软件界面视觉优化
+
+完成内容:
+
+- 将主窗口改为现代浅色桌面应用风格：顶部品牌栏、状态胶囊、白色功能卡片、现代标签页和统一按钮样式。
+- 将 `连接与消息` 页重排为左侧工具区、右侧聊天区，减少控件堆叠感。
+- 将聊天记录从 `ScrolledText` 文本列表升级为类似 Telegram 的气泡式消息流：PC 右侧蓝色气泡，FPGA/mock 左侧白色气泡，系统提示居中。
+- 聊天气泡支持时间戳、长文本自动换行和滚动到底部。
+- 将 `功能控制` 页按闹钟、日程、倒计时分成独立功能卡片。
+- 将底部日志改成深色控制台风格，保留三档日志高度控制。
+- 将启动选择窗口轻量美化为同一套浅色卡片风格。
+- 更新 PC 软件 README 和设计文档，说明新版视觉结构。
+- 重新打包 `software/clocklink_studio/dist/ClockLinkStudio.exe`。
+
+修改文件:
+
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/desktop.py`
+- `software/clocklink_studio/README.md`
+- `docs/ClockLink_Studio_PC_Software_Design.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m py_compile main.py desktop.py ui/main_window.py transport/mock_transport.py transport/serial_transport.py`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python -c "... ClockLinkWindow(c).run() ..."` GUI 构造 smoke 测试
+- `cd software/clocklink_studio; python -m PyInstaller --noconfirm ClockLinkStudio.spec`
+- `cd software/clocklink_studio; Start-Process .\dist\ClockLinkStudio.exe --self-test ...`
+- `git diff --check`
+
+检查结果:
+
+- Python 编译检查通过。
+- `desktop.py --self-test` 通过。
+- `python -m pytest` 通过，15 个测试全部通过。
+- GUI 构造 smoke 测试输出 `GUI_SMOKE_OK`。
+- PyInstaller 成功重建 `dist/ClockLinkStudio.exe`。
+- exe 自测退出码为 `0`。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+- 本阶段未运行 Vivado，因为只修改 PC GUI 和文档，不涉及 HDL、XDC 或综合路径。
+
+未完成/阻塞:
+
+- 尚未在真实 Nexys A7 上验证串口模式下的新界面操作体验。
+
+风险:
+
+- 仍使用 Tkinter 原生控件实现现代视觉，圆角和阴影能力有限，但不增加依赖，便于继续打包单文件 exe。
+- 真实串口主动 `REPLY/EVENT` 后台监听仍是后续增强项，当前聊天记录以同步命令返回为主。
+
+下一阶段计划:
+
+- 用新版 exe 连接真实板卡，验证聊天气泡、底部日志、时间同步和 COMM 消息链路的实际演示效果。
+
+建议提交信息:
+
+- `feat(pc): modernize ClockLink Studio interface`
