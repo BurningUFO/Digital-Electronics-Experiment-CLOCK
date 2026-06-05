@@ -4,6 +4,35 @@ module oled_ui_display (
     input  wire [2:0] mode_state,
     input  wire       edit_active,
     input  wire       countdown_run,
+    input  wire       hour_format_12h,
+    input  wire       temp_valid,
+    input  wire       temp_negative,
+    input  wire [7:0] temp_c_abs,
+    input  wire       notify_active,
+    input  wire [1:0] notify_type,
+    input  wire [2:0] notify_slot,
+    input  wire [3:0] date_month_ten_bcd,
+    input  wire [3:0] date_month_unit_bcd,
+    input  wire [3:0] date_day_ten_bcd,
+    input  wire [3:0] date_day_unit_bcd,
+    input  wire [2:0] date_weekday,
+    input  wire       next_alarm_valid,
+    input  wire [3:0] next_alarm_hour_ten_bcd,
+    input  wire [3:0] next_alarm_hour_unit_bcd,
+    input  wire [3:0] next_alarm_min_ten_bcd,
+    input  wire [3:0] next_alarm_min_unit_bcd,
+    input  wire       next_schedule_valid,
+    input  wire [2:0] next_schedule_slot,
+    input  wire [3:0] next_schedule_hour_ten_bcd,
+    input  wire [3:0] next_schedule_hour_unit_bcd,
+    input  wire [3:0] next_schedule_min_ten_bcd,
+    input  wire [3:0] next_schedule_min_unit_bcd,
+    input  wire [3:0] countdown_hour_ten_bcd,
+    input  wire [3:0] countdown_hour_unit_bcd,
+    input  wire [3:0] countdown_min_ten_bcd,
+    input  wire [3:0] countdown_min_unit_bcd,
+    input  wire [3:0] countdown_sec_ten_bcd,
+    input  wire [3:0] countdown_sec_unit_bcd,
     output reg        init_done,
     output reg        error,
     inout  wire       oled_scl,
@@ -22,17 +51,21 @@ module oled_ui_display (
     localparam [2:0] ST_ERROR     = 3'd4;
 
     localparam integer POWERUP_WAIT     = 22'd2_000_000;
-    localparam [7:0] LEFT_X_START       = 8'd2;
-    localparam [7:0] RIGHT_X_START      = 8'd86;
-    localparam [7:0] ANIM_STEP          = 8'd8;
     localparam [2:0] SIDE_PAGE          = 3'd1;
+    localparam [2:0] SCHEDULE_PAGE      = 3'd2;
     localparam [2:0] CENTER_PAGE_BASE   = 3'd3;
+    localparam [2:0] ALARM_PAGE         = 3'd5;
     localparam [2:0] STATUS_PAGE        = 3'd6;
     localparam [2:0] ACTIVE_PAGE_FIRST  = 3'd1;
     localparam [2:0] ACTIVE_PAGE_LAST   = 3'd6;
-    localparam [7:0] BORDER_Y_TOP       = 8'd20;
-    localparam [7:0] BORDER_Y_BOTTOM    = 8'd43;
-    localparam [7:0] BORDER_PAD_X       = 8'd4;
+    localparam [1:0] NOTIFY_NONE        = 2'd0;
+    localparam [1:0] NOTIFY_COUNTDOWN   = 2'd1;
+    localparam [1:0] NOTIFY_ALARM       = 2'd2;
+    localparam [1:0] NOTIFY_SCHEDULE    = 2'd3;
+    localparam [7:0] POPUP_X_LEFT       = 8'd6;
+    localparam [7:0] POPUP_X_RIGHT      = 8'd121;
+    localparam [7:0] POPUP_Y_TOP        = 8'd12;
+    localparam [7:0] POPUP_Y_BOTTOM     = 8'd55;
 
     reg [2:0]  state = ST_POWERUP;
     reg [21:0] powerup_count = 22'd0;
@@ -45,23 +78,48 @@ module oled_ui_display (
     reg        ll_cmd_valid = 1'b0;
     reg [1:0]  active_ll_cmd = CMD_START;
     reg [2:0]  display_mode = 3'b000;
-    reg [2:0]  anim_target_mode = 3'b000;
-    reg        animating = 1'b0;
-    reg        anim_dir_right = 1'b0;
-    reg [7:0]  anim_offset = 8'd0;
-    reg [7:0]  anim_total_distance = 8'd0;
-    reg [2:0]  render_display_mode = 3'b000;
-    reg [2:0]  render_target_mode = 3'b000;
-    reg        render_animating = 1'b0;
-    reg        render_dir_right = 1'b0;
-    reg [7:0]  render_offset = 8'd0;
+    reg [39:0] render_display_label_ascii = {"C","L","O","C","K"};
     reg        render_countdown_run = 1'b0;
+    reg        render_hour_format_12h = 1'b0;
+    reg        render_temp_valid = 1'b0;
+    reg        render_temp_negative = 1'b0;
+    reg [7:0]  render_temp_tens_ascii = "0";
+    reg [7:0]  render_temp_ones_ascii = "0";
+    reg        render_notify_active = 1'b0;
+    reg [1:0]  render_notify_type = NOTIFY_NONE;
+    reg [2:0]  render_notify_slot = 3'd0;
+    reg [3:0]  render_date_month_ten_bcd = 4'd0;
+    reg [3:0]  render_date_month_unit_bcd = 4'd0;
+    reg [3:0]  render_date_day_ten_bcd = 4'd0;
+    reg [3:0]  render_date_day_unit_bcd = 4'd0;
+    reg [2:0]  render_date_weekday = 3'd1;
+    reg        render_next_alarm_valid = 1'b0;
+    reg [3:0]  render_next_alarm_hour_ten_bcd = 4'd0;
+    reg [3:0]  render_next_alarm_hour_unit_bcd = 4'd0;
+    reg [3:0]  render_next_alarm_min_ten_bcd = 4'd0;
+    reg [3:0]  render_next_alarm_min_unit_bcd = 4'd0;
+    reg        render_next_schedule_valid = 1'b0;
+    reg [2:0]  render_next_schedule_slot = 3'd0;
+    reg [3:0]  render_next_schedule_hour_ten_bcd = 4'd0;
+    reg [3:0]  render_next_schedule_hour_unit_bcd = 4'd0;
+    reg [3:0]  render_next_schedule_min_ten_bcd = 4'd0;
+    reg [3:0]  render_next_schedule_min_unit_bcd = 4'd0;
+    reg [3:0]  render_countdown_hour_ten_bcd = 4'd0;
+    reg [3:0]  render_countdown_hour_unit_bcd = 4'd0;
+    reg [3:0]  render_countdown_min_ten_bcd = 4'd0;
+    reg [3:0]  render_countdown_min_unit_bcd = 4'd0;
+    reg [3:0]  render_countdown_sec_ten_bcd = 4'd0;
+    reg [3:0]  render_countdown_sec_unit_bcd = 4'd0;
     reg        frame_tick_toggle = 1'b0;
     reg        frame_tick_toggle_d = 1'b0;
 
     wire ll_busy;
     wire ll_done;
     wire ll_ack_ok;
+    wire [71:0] date_text_ascii;
+    wire [95:0] countdown_text_ascii;
+    wire [3:0]  countdown_text_len;
+    wire [95:0] notify_text_ascii;
 
     i2c_master_simple #(
         .CLK_DIV(100)
@@ -76,6 +134,34 @@ module oled_ui_display (
         .ack_ok(ll_ack_ok),
         .scl(oled_scl),
         .sda(oled_sda)
+    );
+
+    oled_date_status u_oled_date_status(
+        .month_ten(render_date_month_ten_bcd),
+        .month_unit(render_date_month_unit_bcd),
+        .day_ten(render_date_day_ten_bcd),
+        .day_unit(render_date_day_unit_bcd),
+        .weekday(render_date_weekday),
+        .date_text_ascii(date_text_ascii)
+    );
+
+    oled_countdown_status u_oled_countdown_status(
+        .countdown_run(render_countdown_run),
+        .countdown_hour_ten_bcd(render_countdown_hour_ten_bcd),
+        .countdown_hour_unit_bcd(render_countdown_hour_unit_bcd),
+        .countdown_min_ten_bcd(render_countdown_min_ten_bcd),
+        .countdown_min_unit_bcd(render_countdown_min_unit_bcd),
+        .countdown_sec_ten_bcd(render_countdown_sec_ten_bcd),
+        .countdown_sec_unit_bcd(render_countdown_sec_unit_bcd),
+        .countdown_ascii(countdown_text_ascii),
+        .countdown_ascii_len(countdown_text_len)
+    );
+
+    oled_notify_status u_oled_notify_status(
+        .notify_active(render_notify_active),
+        .notify_type(render_notify_type),
+        .notify_slot(render_notify_slot),
+        .notify_text(notify_text_ascii)
     );
 
     function [7:0] init_cmd;
@@ -151,17 +237,39 @@ module oled_ui_display (
         end
     endfunction
 
+    function [39:0] mode_label_ascii;
+        input [2:0] mode;
+        begin
+            case (mode)
+                3'b000: mode_label_ascii = {"C","L","O","C","K"};
+                3'b001: mode_label_ascii = {"T","I","M","E"," "};
+                3'b010: mode_label_ascii = {"A","L","A","R","M"};
+                3'b011: mode_label_ascii = {"H","O","U","R"," "};
+                3'b100: mode_label_ascii = {"C","O","U","N","T"};
+                default: mode_label_ascii = {"S","C","H","E","D"};
+            endcase
+        end
+    endfunction
+
+    function [7:0] label_char;
+        input [39:0] label;
+        input [2:0] index;
+        begin
+            case (index)
+                3'd0: label_char = label[39:32];
+                3'd1: label_char = label[31:24];
+                3'd2: label_char = label[23:16];
+                3'd3: label_char = label[15:8];
+                3'd4: label_char = label[7:0];
+                default: label_char = " ";
+            endcase
+        end
+    endfunction
+
     function [7:0] center_x_start;
         input [2:0] mode;
         begin
             center_x_start = 8'd64 - {5'd0, mode_len(mode), 3'b000};
-        end
-    endfunction
-
-    function [7:0] big_width;
-        input [2:0] mode;
-        begin
-            big_width = {4'd0, mode_len(mode), 4'b0000};
         end
     endfunction
 
@@ -282,6 +390,18 @@ module oled_ui_display (
                         3'd4: glyph_row = 8'b01000000;
                         3'd5: glyph_row = 8'b01000000;
                         3'd6: glyph_row = 8'b01111110;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "F": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01111110;
+                        3'd1: glyph_row = 8'b01000000;
+                        3'd2: glyph_row = 8'b01000000;
+                        3'd3: glyph_row = 8'b01111100;
+                        3'd4: glyph_row = 8'b01000000;
+                        3'd5: glyph_row = 8'b01000000;
+                        3'd6: glyph_row = 8'b01000000;
                         default: glyph_row = 8'b00000000;
                     endcase
                 end
@@ -429,6 +549,198 @@ module oled_ui_display (
                         default: glyph_row = 8'b00000000;
                     endcase
                 end
+                "W": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01000010;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b01000010;
+                        3'd3: glyph_row = 8'b01000010;
+                        3'd4: glyph_row = 8'b01011010;
+                        3'd5: glyph_row = 8'b01100110;
+                        3'd6: glyph_row = 8'b01000010;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "X": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01000010;
+                        3'd1: glyph_row = 8'b00100100;
+                        3'd2: glyph_row = 8'b00011000;
+                        3'd3: glyph_row = 8'b00011000;
+                        3'd4: glyph_row = 8'b00011000;
+                        3'd5: glyph_row = 8'b00100100;
+                        3'd6: glyph_row = 8'b01000010;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "Y": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01000010;
+                        3'd1: glyph_row = 8'b00100100;
+                        3'd2: glyph_row = 8'b00011000;
+                        3'd3: glyph_row = 8'b00011000;
+                        3'd4: glyph_row = 8'b00011000;
+                        3'd5: glyph_row = 8'b00011000;
+                        3'd6: glyph_row = 8'b00011000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "0": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b01000110;
+                        3'd3: glyph_row = 8'b01001010;
+                        3'd4: glyph_row = 8'b01010010;
+                        3'd5: glyph_row = 8'b01100010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "1": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00011000;
+                        3'd1: glyph_row = 8'b00101000;
+                        3'd2: glyph_row = 8'b00001000;
+                        3'd3: glyph_row = 8'b00001000;
+                        3'd4: glyph_row = 8'b00001000;
+                        3'd5: glyph_row = 8'b00001000;
+                        3'd6: glyph_row = 8'b00111110;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "2": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b00000010;
+                        3'd3: glyph_row = 8'b00001100;
+                        3'd4: glyph_row = 8'b00110000;
+                        3'd5: glyph_row = 8'b01000000;
+                        3'd6: glyph_row = 8'b01111110;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "3": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b00000010;
+                        3'd3: glyph_row = 8'b00011100;
+                        3'd4: glyph_row = 8'b00000010;
+                        3'd5: glyph_row = 8'b01000010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "4": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00000100;
+                        3'd1: glyph_row = 8'b00001100;
+                        3'd2: glyph_row = 8'b00010100;
+                        3'd3: glyph_row = 8'b00100100;
+                        3'd4: glyph_row = 8'b01111110;
+                        3'd5: glyph_row = 8'b00000100;
+                        3'd6: glyph_row = 8'b00000100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "5": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01111110;
+                        3'd1: glyph_row = 8'b01000000;
+                        3'd2: glyph_row = 8'b01000000;
+                        3'd3: glyph_row = 8'b01111100;
+                        3'd4: glyph_row = 8'b00000010;
+                        3'd5: glyph_row = 8'b01000010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "6": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000000;
+                        3'd2: glyph_row = 8'b01000000;
+                        3'd3: glyph_row = 8'b01111100;
+                        3'd4: glyph_row = 8'b01000010;
+                        3'd5: glyph_row = 8'b01000010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "7": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b01111110;
+                        3'd1: glyph_row = 8'b00000010;
+                        3'd2: glyph_row = 8'b00000100;
+                        3'd3: glyph_row = 8'b00001000;
+                        3'd4: glyph_row = 8'b00010000;
+                        3'd5: glyph_row = 8'b00100000;
+                        3'd6: glyph_row = 8'b00100000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "8": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b01000010;
+                        3'd3: glyph_row = 8'b00111100;
+                        3'd4: glyph_row = 8'b01000010;
+                        3'd5: glyph_row = 8'b01000010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "9": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00111100;
+                        3'd1: glyph_row = 8'b01000010;
+                        3'd2: glyph_row = 8'b01000010;
+                        3'd3: glyph_row = 8'b00111110;
+                        3'd4: glyph_row = 8'b00000010;
+                        3'd5: glyph_row = 8'b00000010;
+                        3'd6: glyph_row = 8'b00111100;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                ":": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00000000;
+                        3'd1: glyph_row = 8'b00011000;
+                        3'd2: glyph_row = 8'b00011000;
+                        3'd3: glyph_row = 8'b00000000;
+                        3'd4: glyph_row = 8'b00011000;
+                        3'd5: glyph_row = 8'b00011000;
+                        3'd6: glyph_row = 8'b00000000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "/": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00000010;
+                        3'd1: glyph_row = 8'b00000100;
+                        3'd2: glyph_row = 8'b00001000;
+                        3'd3: glyph_row = 8'b00010000;
+                        3'd4: glyph_row = 8'b00100000;
+                        3'd5: glyph_row = 8'b01000000;
+                        3'd6: glyph_row = 8'b00000000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
+                "-": begin
+                    case (row)
+                        3'd0: glyph_row = 8'b00000000;
+                        3'd1: glyph_row = 8'b00000000;
+                        3'd2: glyph_row = 8'b00000000;
+                        3'd3: glyph_row = 8'b01111110;
+                        3'd4: glyph_row = 8'b00000000;
+                        3'd5: glyph_row = 8'b00000000;
+                        3'd6: glyph_row = 8'b00000000;
+                        default: glyph_row = 8'b00000000;
+                    endcase
+                end
                 default: glyph_row = 8'b00000000;
             endcase
         end
@@ -530,85 +842,265 @@ module oled_ui_display (
         end
     endfunction
 
-    function [7:0] center_label_data;
-        input [2:0] page;
-        input [7:0] col;
-        input [2:0] mode;
-        input integer x_start;
-        integer bit_idx;
-        integer col_i;
-        integer width_i;
-        integer local_col_i;
-        integer char_index_i;
-        integer source_col_i;
-        reg [7:0] out_byte;
-        reg [7:0] row_bits;
-        reg pixel;
-        reg [7:0] y_abs;
-        reg [2:0] source_row;
+    function [7:0] packed12_char;
+        input [95:0] text;
+        input [3:0] index;
         begin
-            center_label_data = 8'h00;
-            col_i = col;
-            width_i = big_width(mode);
+            case (index)
+                4'd0:  packed12_char = text[95:88];
+                4'd1:  packed12_char = text[87:80];
+                4'd2:  packed12_char = text[79:72];
+                4'd3:  packed12_char = text[71:64];
+                4'd4:  packed12_char = text[63:56];
+                4'd5:  packed12_char = text[55:48];
+                4'd6:  packed12_char = text[47:40];
+                4'd7:  packed12_char = text[39:32];
+                4'd8:  packed12_char = text[31:24];
+                4'd9:  packed12_char = text[23:16];
+                4'd10: packed12_char = text[15:8];
+                4'd11: packed12_char = text[7:0];
+                default: packed12_char = " ";
+            endcase
+        end
+    endfunction
 
-            if (page >= CENTER_PAGE_BASE &&
-                page < CENTER_PAGE_BASE + 2 &&
-                col_i >= x_start &&
-                col_i < x_start + width_i) begin
-                out_byte  = 8'h00;
-                local_col_i = col_i - x_start;
-                char_index_i = local_col_i / 16;
-                source_col_i = (local_col_i / 2) % 8;
+    function [7:0] packed9_char;
+        input [71:0] text;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: packed9_char = text[71:64];
+                4'd1: packed9_char = text[63:56];
+                4'd2: packed9_char = text[55:48];
+                4'd3: packed9_char = text[47:40];
+                4'd4: packed9_char = text[39:32];
+                4'd5: packed9_char = text[31:24];
+                4'd6: packed9_char = text[23:16];
+                4'd7: packed9_char = text[15:8];
+                4'd8: packed9_char = text[7:0];
+                default: packed9_char = " ";
+            endcase
+        end
+    endfunction
 
-                for (bit_idx = 0; bit_idx < 8; bit_idx = bit_idx + 1) begin
-                    y_abs      = {5'd0, page, 3'b000} + bit_idx[7:0] - {5'd0, CENTER_PAGE_BASE, 3'b000};
-                    source_row = y_abs[4:1];
-                    row_bits   = glyph_row(mode_char(mode, char_index_i[2:0]), source_row);
-                    pixel      = row_bits[7 - source_col_i[2:0]];
-                    out_byte[bit_idx] = pixel;
-                end
-                center_label_data = out_byte;
+    function [7:0] bcd_ascii;
+        input [3:0] digit;
+        begin
+            bcd_ascii = (digit <= 4'd9) ? (8'h30 + digit) : "?";
+        end
+    endfunction
+
+    function [7:0] decimal_tens_ascii;
+        input [7:0] value;
+        begin
+            if (value >= 8'd90) begin
+                decimal_tens_ascii = "9";
+            end else if (value >= 8'd80) begin
+                decimal_tens_ascii = "8";
+            end else if (value >= 8'd70) begin
+                decimal_tens_ascii = "7";
+            end else if (value >= 8'd60) begin
+                decimal_tens_ascii = "6";
+            end else if (value >= 8'd50) begin
+                decimal_tens_ascii = "5";
+            end else if (value >= 8'd40) begin
+                decimal_tens_ascii = "4";
+            end else if (value >= 8'd30) begin
+                decimal_tens_ascii = "3";
+            end else if (value >= 8'd20) begin
+                decimal_tens_ascii = "2";
+            end else if (value >= 8'd10) begin
+                decimal_tens_ascii = "1";
+            end else begin
+                decimal_tens_ascii = "0";
             end
         end
     endfunction
 
-    function [7:0] border_overlay;
+    function [7:0] decimal_ones_ascii;
+        input [7:0] value;
+        reg [7:0] ones;
+        begin
+            if (value >= 8'd90) begin
+                ones = value - 8'd90;
+            end else if (value >= 8'd80) begin
+                ones = value - 8'd80;
+            end else if (value >= 8'd70) begin
+                ones = value - 8'd70;
+            end else if (value >= 8'd60) begin
+                ones = value - 8'd60;
+            end else if (value >= 8'd50) begin
+                ones = value - 8'd50;
+            end else if (value >= 8'd40) begin
+                ones = value - 8'd40;
+            end else if (value >= 8'd30) begin
+                ones = value - 8'd30;
+            end else if (value >= 8'd20) begin
+                ones = value - 8'd20;
+            end else if (value >= 8'd10) begin
+                ones = value - 8'd10;
+            end else begin
+                ones = value;
+            end
+            decimal_ones_ascii = 8'h30 + ones[3:0];
+        end
+    endfunction
+
+    function [7:0] temp_char;
+        input [3:0] index;
+        begin
+            if (!render_temp_valid) begin
+                case (index)
+                    4'd0: temp_char = "-";
+                    4'd1: temp_char = "-";
+                    4'd2: temp_char = "C";
+                    default: temp_char = " ";
+                endcase
+            end else if (render_temp_negative) begin
+                case (index)
+                    4'd0: temp_char = "-";
+                    4'd1: temp_char = render_temp_tens_ascii;
+                    4'd2: temp_char = render_temp_ones_ascii;
+                    4'd3: temp_char = "C";
+                    default: temp_char = " ";
+                endcase
+            end else begin
+                case (index)
+                    4'd0: temp_char = render_temp_tens_ascii;
+                    4'd1: temp_char = render_temp_ones_ascii;
+                    4'd2: temp_char = "C";
+                    default: temp_char = " ";
+                endcase
+            end
+        end
+    endfunction
+
+    function [7:0] schedule_char;
+        input [3:0] index;
+        begin
+            if (!render_next_schedule_valid) begin
+                case (index)
+                    4'd0: schedule_char = "S";
+                    4'd1: schedule_char = " ";
+                    4'd2: schedule_char = "-";
+                    4'd3: schedule_char = "-";
+                    4'd4: schedule_char = ":";
+                    4'd5: schedule_char = "-";
+                    4'd6: schedule_char = "-";
+                    default: schedule_char = " ";
+                endcase
+            end else begin
+                case (index)
+                    4'd0: schedule_char = "S";
+                    4'd1: schedule_char = bcd_ascii({1'b0, render_next_schedule_slot} + 4'd1);
+                    4'd2: schedule_char = " ";
+                    4'd3: schedule_char = bcd_ascii(render_next_schedule_hour_ten_bcd);
+                    4'd4: schedule_char = bcd_ascii(render_next_schedule_hour_unit_bcd);
+                    4'd5: schedule_char = ":";
+                    4'd6: schedule_char = bcd_ascii(render_next_schedule_min_ten_bcd);
+                    4'd7: schedule_char = bcd_ascii(render_next_schedule_min_unit_bcd);
+                    default: schedule_char = " ";
+                endcase
+            end
+        end
+    endfunction
+
+    function [7:0] alarm_char;
+        input [3:0] index;
+        begin
+            if (!render_next_alarm_valid) begin
+                case (index)
+                    4'd0: alarm_char = "A";
+                    4'd1: alarm_char = " ";
+                    4'd2: alarm_char = "-";
+                    4'd3: alarm_char = "-";
+                    4'd4: alarm_char = ":";
+                    4'd5: alarm_char = "-";
+                    4'd6: alarm_char = "-";
+                    default: alarm_char = " ";
+                endcase
+            end else begin
+                case (index)
+                    4'd0: alarm_char = "A";
+                    4'd1: alarm_char = " ";
+                    4'd2: alarm_char = bcd_ascii(render_next_alarm_hour_ten_bcd);
+                    4'd3: alarm_char = bcd_ascii(render_next_alarm_hour_unit_bcd);
+                    4'd4: alarm_char = ":";
+                    4'd5: alarm_char = bcd_ascii(render_next_alarm_min_ten_bcd);
+                    4'd6: alarm_char = bcd_ascii(render_next_alarm_min_unit_bcd);
+                    default: alarm_char = " ";
+                endcase
+            end
+        end
+    endfunction
+
+    function [7:0] format_char;
+        input [3:0] index;
+        begin
+            case (index)
+                4'd0: format_char = render_hour_format_12h ? "1" : "2";
+                4'd1: format_char = render_hour_format_12h ? "2" : "4";
+                4'd2: format_char = "H";
+                default: format_char = " ";
+            endcase
+        end
+    endfunction
+
+    function [7:0] text_line_data;
         input [2:0] page;
         input [7:0] col;
-        input [2:0] mode;
-        input integer x_start;
-        input edit_flag;
-        integer bit_idx;
-        integer col_i;
-        integer width_i;
-        integer box_left;
-        integer box_right;
-        reg [7:0] out_byte;
-        reg [7:0] box_y;
+        input [2:0] target_page;
+        input [7:0] x_start;
+        input [3:0] len;
+        input [3:0] text_kind;
+        reg [7:0] local_col;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
         begin
-            border_overlay = 8'h00;
-            if (edit_flag) begin
-                col_i = col;
-                width_i = big_width(mode);
-                box_left  = x_start - BORDER_PAD_X;
-                box_right = x_start + width_i + BORDER_PAD_X - 1;
-                out_byte = 8'h00;
+            text_line_data = 8'h00;
+            if ((page == target_page) && (col >= x_start) && (col < x_start + {1'b0, len, 3'b000})) begin
+                local_col = col - x_start;
+                char_index = {1'b0, local_col[7:3]};
+                glyph_col_index = local_col[2:0];
+                case (text_kind)
+                    4'd0: ch = packed9_char(date_text_ascii, char_index);
+                    4'd1: ch = temp_char(char_index);
+                    4'd2: ch = schedule_char(char_index);
+                    4'd3: ch = alarm_char(char_index);
+                    4'd4: ch = packed12_char(countdown_text_ascii, char_index);
+                    4'd5: ch = format_char(char_index);
+                    4'd6: ch = packed12_char(notify_text_ascii, char_index);
+                    4'd7: ch = label_char(render_display_label_ascii, char_index[2:0]);
+                    default: ch = " ";
+                endcase
+                text_line_data = glyph_column(ch, glyph_col_index);
+            end
+        end
+    endfunction
 
-                if (col_i >= box_left && col_i <= box_right) begin
-                    for (bit_idx = 0; bit_idx < 8; bit_idx = bit_idx + 1) begin
-                        box_y = {5'd0, page, 3'b000} + bit_idx[7:0];
-                        if (((col_i == box_left) || (col_i == box_right)) &&
-                            (box_y >= BORDER_Y_TOP) && (box_y <= BORDER_Y_BOTTOM)) begin
-                            out_byte[bit_idx] = 1'b1;
-                        end
-                        if (((box_y == BORDER_Y_TOP) || (box_y == BORDER_Y_BOTTOM)) &&
-                            (col_i >= box_left) && (col_i <= box_right)) begin
-                            out_byte[bit_idx] = 1'b1;
-                        end
+    function [7:0] popup_box_data;
+        input [2:0] page;
+        input [7:0] col;
+        integer bit_idx;
+        reg [7:0] y_abs;
+        reg [7:0] out_byte;
+        begin
+            out_byte = 8'h00;
+            if ((col >= POPUP_X_LEFT) && (col <= POPUP_X_RIGHT)) begin
+                for (bit_idx = 0; bit_idx < 8; bit_idx = bit_idx + 1) begin
+                    y_abs = {5'd0, page, 3'b000} + bit_idx[7:0];
+                    if (((col == POPUP_X_LEFT) || (col == POPUP_X_RIGHT)) &&
+                        (y_abs >= POPUP_Y_TOP) && (y_abs <= POPUP_Y_BOTTOM)) begin
+                        out_byte[bit_idx] = 1'b1;
+                    end
+                    if (((y_abs == POPUP_Y_TOP) || (y_abs == POPUP_Y_BOTTOM)) &&
+                        (col >= POPUP_X_LEFT) && (col <= POPUP_X_RIGHT)) begin
+                        out_byte[bit_idx] = 1'b1;
                     end
                 end
-                border_overlay = out_byte;
             end
+            popup_box_data = out_byte;
         end
     endfunction
 
@@ -617,37 +1109,45 @@ module oled_ui_display (
         input [7:0] col;
         input edit_flag;
         reg [7:0] data_byte;
-        reg [2:0] view_mode;
-        integer current_big_x;
-        integer target_big_x;
         begin
             data_byte = 8'h00;
-            view_mode = render_animating ? render_target_mode : render_display_mode;
 
-            if (page == SIDE_PAGE) begin
-                data_byte = data_byte |
-                            side_label_data(col, prev_mode(view_mode), LEFT_X_START) |
-                            side_label_data(col, next_mode(view_mode), RIGHT_X_START);
-            end
-
-            if ((page == STATUS_PAGE) && (view_mode == 3'b100)) begin
-                data_byte = data_byte | status_label_data(col, render_countdown_run);
-            end
-
-            if (render_animating) begin
-                if (render_dir_right) begin
-                    current_big_x = center_x_start(render_display_mode) - render_offset;
-                    target_big_x  = 128 - render_offset;
-                end else begin
-                    current_big_x = center_x_start(render_display_mode) + render_offset;
-                    target_big_x  = render_offset - big_width(render_target_mode);
+            case (page)
+                SIDE_PAGE: begin
+                    data_byte = text_line_data(page, col, SIDE_PAGE, 8'd2, 4'd9, 4'd0) |
+                                text_line_data(page, col, SIDE_PAGE, 8'd96, 4'd4, 4'd1);
                 end
-                data_byte = data_byte | center_label_data(page, col, render_display_mode, current_big_x);
-                data_byte = data_byte | center_label_data(page, col, render_target_mode, target_big_x);
-            end else begin
-                current_big_x = center_x_start(render_display_mode);
-                data_byte = data_byte | center_label_data(page, col, render_display_mode, current_big_x);
-                data_byte = data_byte | border_overlay(page, col, render_display_mode, current_big_x, edit_flag);
+                SCHEDULE_PAGE: begin
+                    data_byte = text_line_data(page, col, SCHEDULE_PAGE, 8'd24, 4'd8, 4'd2);
+                end
+                CENTER_PAGE_BASE,
+                CENTER_PAGE_BASE + 1'b1: begin
+                    if (page == CENTER_PAGE_BASE) begin
+                        data_byte = text_line_data(page, col, CENTER_PAGE_BASE, 8'd44, 4'd5, 4'd7);
+                    end else if (edit_flag && (col >= 8'd44) && (col < 8'd84)) begin
+                        data_byte = 8'h01;
+                    end else begin
+                        data_byte = 8'h00;
+                    end
+                end
+                ALARM_PAGE: begin
+                    data_byte = text_line_data(page, col, ALARM_PAGE, 8'd2, 4'd7, 4'd3) |
+                                text_line_data(page, col, ALARM_PAGE, 8'd96, 4'd3, 4'd5);
+                end
+                STATUS_PAGE: begin
+                    data_byte = text_line_data(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd4);
+                end
+                default: begin
+                    data_byte = 8'h00;
+                end
+            endcase
+
+            if (render_notify_active) begin
+                if ((page >= 3'd2) && (page <= 3'd6) &&
+                    (col >= POPUP_X_LEFT) && (col <= POPUP_X_RIGHT)) begin
+                    data_byte = popup_box_data(page, col) |
+                                text_line_data(page, col, CENTER_PAGE_BASE, 8'd16, 4'd12, 4'd6);
+                end
             end
 
             page_data = data_byte;
@@ -669,49 +1169,78 @@ module oled_ui_display (
     always @(posedge clk) begin
         if (rst) begin
             display_mode      <= 3'b000;
-            anim_target_mode  <= 3'b000;
-            animating         <= 1'b0;
-            anim_dir_right    <= 1'b0;
-            anim_offset       <= 8'd0;
-            anim_total_distance <= 8'd0;
-            render_display_mode <= 3'b000;
-            render_target_mode  <= 3'b000;
-            render_animating    <= 1'b0;
-            render_dir_right    <= 1'b0;
-            render_offset       <= 8'd0;
+            render_display_label_ascii <= {"C","L","O","C","K"};
             render_countdown_run <= 1'b0;
+            render_hour_format_12h <= 1'b0;
+            render_temp_valid <= 1'b0;
+            render_temp_negative <= 1'b0;
+            render_temp_tens_ascii <= "0";
+            render_temp_ones_ascii <= "0";
+            render_notify_active <= 1'b0;
+            render_notify_type <= NOTIFY_NONE;
+            render_notify_slot <= 3'd0;
+            render_date_month_ten_bcd <= 4'd0;
+            render_date_month_unit_bcd <= 4'd0;
+            render_date_day_ten_bcd <= 4'd0;
+            render_date_day_unit_bcd <= 4'd0;
+            render_date_weekday <= 3'd1;
+            render_next_alarm_valid <= 1'b0;
+            render_next_alarm_hour_ten_bcd <= 4'd0;
+            render_next_alarm_hour_unit_bcd <= 4'd0;
+            render_next_alarm_min_ten_bcd <= 4'd0;
+            render_next_alarm_min_unit_bcd <= 4'd0;
+            render_next_schedule_valid <= 1'b0;
+            render_next_schedule_slot <= 3'd0;
+            render_next_schedule_hour_ten_bcd <= 4'd0;
+            render_next_schedule_hour_unit_bcd <= 4'd0;
+            render_next_schedule_min_ten_bcd <= 4'd0;
+            render_next_schedule_min_unit_bcd <= 4'd0;
+            render_countdown_hour_ten_bcd <= 4'd0;
+            render_countdown_hour_unit_bcd <= 4'd0;
+            render_countdown_min_ten_bcd <= 4'd0;
+            render_countdown_min_unit_bcd <= 4'd0;
+            render_countdown_sec_ten_bcd <= 4'd0;
+            render_countdown_sec_unit_bcd <= 4'd0;
             frame_tick_toggle_d <= 1'b0;
         end else begin
             if (mode_state != display_mode) begin
-                animating        <= 1'b1;
-                anim_target_mode <= mode_state;
-                anim_dir_right   <= (mode_state == next_mode(display_mode));
-                if (mode_state == next_mode(display_mode)) begin
-                    anim_total_distance <= 8'd128 - center_x_start(mode_state);
-                end else begin
-                    anim_total_distance <= center_x_start(mode_state) + big_width(mode_state);
-                end
+                display_mode <= mode_state;
             end
 
             if (frame_tick_toggle != frame_tick_toggle_d) begin
                 frame_tick_toggle_d  <= frame_tick_toggle;
-                render_display_mode  <= display_mode;
-                render_target_mode   <= anim_target_mode;
-                render_animating     <= animating;
-                render_dir_right     <= anim_dir_right;
-                render_offset        <= anim_offset;
+                render_display_label_ascii <= mode_label_ascii(display_mode);
                 render_countdown_run <= countdown_run;
-
-                if (animating) begin
-                    if (anim_offset + ANIM_STEP >= anim_total_distance) begin
-                        display_mode        <= anim_target_mode;
-                        animating           <= 1'b0;
-                        anim_offset         <= 8'd0;
-                        anim_total_distance <= 8'd0;
-                    end else begin
-                        anim_offset <= anim_offset + ANIM_STEP;
-                    end
-                end
+                render_hour_format_12h <= hour_format_12h;
+                render_temp_valid <= temp_valid;
+                render_temp_negative <= temp_negative;
+                render_temp_tens_ascii <= decimal_tens_ascii(temp_c_abs);
+                render_temp_ones_ascii <= decimal_ones_ascii(temp_c_abs);
+                render_notify_active <= notify_active;
+                render_notify_type <= notify_type;
+                render_notify_slot <= notify_slot;
+                render_date_month_ten_bcd <= date_month_ten_bcd;
+                render_date_month_unit_bcd <= date_month_unit_bcd;
+                render_date_day_ten_bcd <= date_day_ten_bcd;
+                render_date_day_unit_bcd <= date_day_unit_bcd;
+                render_date_weekday <= date_weekday;
+                render_next_alarm_valid <= next_alarm_valid;
+                render_next_alarm_hour_ten_bcd <= next_alarm_hour_ten_bcd;
+                render_next_alarm_hour_unit_bcd <= next_alarm_hour_unit_bcd;
+                render_next_alarm_min_ten_bcd <= next_alarm_min_ten_bcd;
+                render_next_alarm_min_unit_bcd <= next_alarm_min_unit_bcd;
+                render_next_schedule_valid <= next_schedule_valid;
+                render_next_schedule_slot <= next_schedule_slot;
+                render_next_schedule_hour_ten_bcd <= next_schedule_hour_ten_bcd;
+                render_next_schedule_hour_unit_bcd <= next_schedule_hour_unit_bcd;
+                render_next_schedule_min_ten_bcd <= next_schedule_min_ten_bcd;
+                render_next_schedule_min_unit_bcd <= next_schedule_min_unit_bcd;
+                render_countdown_hour_ten_bcd <= countdown_hour_ten_bcd;
+                render_countdown_hour_unit_bcd <= countdown_hour_unit_bcd;
+                render_countdown_min_ten_bcd <= countdown_min_ten_bcd;
+                render_countdown_min_unit_bcd <= countdown_min_unit_bcd;
+                render_countdown_sec_ten_bcd <= countdown_sec_ten_bcd;
+                render_countdown_sec_unit_bcd <= countdown_sec_unit_bcd;
             end
         end
     end

@@ -7,6 +7,9 @@ module nexys_seg_scan(
     input  [3:0] min_ten_bcd,
     input  [3:0] hour_unit_bcd,
     input  [3:0] hour_ten_bcd,
+    input  full_display_en,
+    input  [47:0] digit_code_bus,
+    input  [7:0] dp_mask,
     output reg [7:0] an,
     output reg CA,
     output reg CB,
@@ -22,34 +25,47 @@ module nexys_seg_scan(
     reg [13:0] scan_div_cnt;
     reg [2:0] scan_idx;
     reg [7:0] seg_active_high;
+    reg [5:0] digit_code;
+    wire use_full_display;
+    wire [6:0] digit_seg_raw;
     wire [6:0] sec_ten_seg_raw;
     wire [6:0] min_unit_seg_raw;
     wire [6:0] min_ten_seg_raw;
     wire [6:0] hour_unit_seg_raw;
     wire [6:0] hour_ten_seg_raw;
 
+    // Optional 8-digit interface:
+    // digit_code_bus[5:0] is D0/AN0, ... digit_code_bus[47:42] is D7/AN7.
+    // dp_mask bit 1 turns that digit's decimal point on before Nexys low-active inversion.
+    assign use_full_display = (full_display_en == 1'b1);
+
+    seg_7 u_seg_digit(
+        .A(digit_code),
+        .seg(digit_seg_raw)
+    );
+
     seg_7 u_seg_sec_ten(
-        .A(sec_ten_bcd),
+        .A({2'b00, sec_ten_bcd}),
         .seg(sec_ten_seg_raw)
     );
 
     seg_7 u_seg_min_unit(
-        .A(min_unit_bcd),
+        .A({2'b00, min_unit_bcd}),
         .seg(min_unit_seg_raw)
     );
 
     seg_7 u_seg_min_ten(
-        .A(min_ten_bcd),
+        .A({2'b00, min_ten_bcd}),
         .seg(min_ten_seg_raw)
     );
 
     seg_7 u_seg_hour_unit(
-        .A(hour_unit_bcd),
+        .A({2'b00, hour_unit_bcd}),
         .seg(hour_unit_seg_raw)
     );
 
     seg_7 u_seg_hour_ten(
-        .A(hour_ten_bcd),
+        .A({2'b00, hour_ten_bcd}),
         .seg(hour_ten_seg_raw)
     );
 
@@ -68,38 +84,47 @@ module nexys_seg_scan(
     always @(*) begin
         seg_active_high = 8'b0000_0000;
         an              = 8'hFF;
+        digit_code      = 6'd10;
 
         case (scan_idx)
             3'd0: begin
-                seg_active_high = sec_unit_seg;
+                digit_code      = digit_code_bus[5:0];
+                seg_active_high = use_full_display ? {dp_mask[0], digit_seg_raw} : sec_unit_seg;
                 an[0]           = 1'b0;
             end
             3'd1: begin
-                seg_active_high = {1'b0, sec_ten_seg_raw};
+                digit_code      = digit_code_bus[11:6];
+                seg_active_high = use_full_display ? {dp_mask[1], digit_seg_raw} : {1'b0, sec_ten_seg_raw};
                 an[1]           = 1'b0;
             end
             3'd2: begin
-                seg_active_high = {1'b0, min_unit_seg_raw};
+                digit_code      = digit_code_bus[17:12];
+                seg_active_high = use_full_display ? {dp_mask[2], digit_seg_raw} : {1'b0, min_unit_seg_raw};
                 an[2]           = 1'b0;
             end
             3'd3: begin
-                seg_active_high = {1'b0, min_ten_seg_raw};
+                digit_code      = digit_code_bus[23:18];
+                seg_active_high = use_full_display ? {dp_mask[3], digit_seg_raw} : {1'b0, min_ten_seg_raw};
                 an[3]           = 1'b0;
             end
             3'd4: begin
-                seg_active_high = {1'b0, hour_unit_seg_raw};
+                digit_code      = digit_code_bus[29:24];
+                seg_active_high = use_full_display ? {dp_mask[4], digit_seg_raw} : {1'b0, hour_unit_seg_raw};
                 an[4]           = 1'b0;
             end
             3'd5: begin
-                seg_active_high = {1'b0, hour_ten_seg_raw};
+                digit_code      = digit_code_bus[35:30];
+                seg_active_high = use_full_display ? {dp_mask[5], digit_seg_raw} : {1'b0, hour_ten_seg_raw};
                 an[5]           = 1'b0;
             end
             3'd6: begin
-                seg_active_high = 8'b0000_0000;
+                digit_code      = digit_code_bus[41:36];
+                seg_active_high = use_full_display ? {dp_mask[6], digit_seg_raw} : 8'b0000_0000;
                 an[6]           = 1'b0;
             end
             default: begin
-                seg_active_high = 8'b0000_0000;
+                digit_code      = digit_code_bus[47:42];
+                seg_active_high = use_full_display ? {dp_mask[7], digit_seg_raw} : 8'b0000_0000;
                 an[7]           = 1'b0;
             end
         endcase

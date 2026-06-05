@@ -1,45 +1,108 @@
 module display_ctrl(
     input  [2:0] mode_state,
-    input  edit_active,
+    input  setting_active,
     input  blink_hide,
     input  [2:0] field_index,
+    input  selected_alarm_enable,
+    input  next_alarm_valid,
+    input  countdown_run,
+    input  hour_format_12h,
     input  [3:0] sec_unit_time_bcd,
     input  [3:0] sec_ten_time_bcd,
     input  [3:0] min_unit_time_bcd,
     input  [3:0] min_ten_time_bcd,
     input  [3:0] hour_unit_time_bcd,
     input  [3:0] hour_ten_time_bcd,
+    input  [3:0] disp_hour_unit_time_bcd,
+    input  [3:0] disp_hour_ten_time_bcd,
+    input  [3:0] date_month_ten_bcd,
+    input  [3:0] date_month_unit_bcd,
+    input  [3:0] date_day_ten_bcd,
+    input  [3:0] date_day_unit_bcd,
+    input  [2:0] date_weekday,
     input  [3:0] alarm_sec_ten_bcd,
     input  [3:0] alarm_sec_unit_bcd,
     input  [3:0] alarm_min_ten_bcd,
     input  [3:0] alarm_min_unit_bcd,
     input  [3:0] alarm_hour_unit_bcd,
     input  [3:0] alarm_hour_ten_bcd,
+    input  [3:0] next_alarm_sec_ten_bcd,
+    input  [3:0] next_alarm_sec_unit_bcd,
+    input  [3:0] next_alarm_min_ten_bcd,
+    input  [3:0] next_alarm_min_unit_bcd,
+    input  [3:0] next_alarm_hour_unit_bcd,
+    input  [3:0] next_alarm_hour_ten_bcd,
+    input  [2:0] selected_schedule_type,
+    input  schedule_type_page,
+    input  [2:0] schedule_selected_slot,
+    input  next_schedule_valid,
+    input  [2:0] next_schedule_slot,
+    input  [3:0] schedule_sec_ten_bcd,
+    input  [3:0] schedule_sec_unit_bcd,
+    input  [3:0] schedule_min_ten_bcd,
+    input  [3:0] schedule_min_unit_bcd,
+    input  [3:0] schedule_hour_unit_bcd,
+    input  [3:0] schedule_hour_ten_bcd,
+    input  [3:0] next_schedule_sec_ten_bcd,
+    input  [3:0] next_schedule_sec_unit_bcd,
+    input  [3:0] next_schedule_min_ten_bcd,
+    input  [3:0] next_schedule_min_unit_bcd,
+    input  [3:0] next_schedule_hour_unit_bcd,
+    input  [3:0] next_schedule_hour_ten_bcd,
     input  [3:0] countdown_hour_ten_bcd,
     input  [3:0] countdown_hour_unit_bcd,
     input  [3:0] countdown_min_ten_bcd,
     input  [3:0] countdown_min_unit_bcd,
     input  [3:0] countdown_sec_ten_bcd,
     input  [3:0] countdown_sec_unit_bcd,
-    output [3:0] sec_unit_disp_bcd,
-    output [3:0] sec_ten_disp_bcd,
-    output [3:0] min_unit_disp_bcd,
-    output [3:0] min_ten_disp_bcd,
-    output [3:0] hour_unit_disp_bcd,
-    output [3:0] hour_ten_disp_bcd
+    output [5:0] mode_disp_code,
+    output [5:0] status_disp_code,
+    output [5:0] sec_unit_disp_bcd,
+    output [5:0] sec_ten_disp_bcd,
+    output [5:0] min_unit_disp_bcd,
+    output [5:0] min_ten_disp_bcd,
+    output [5:0] hour_unit_disp_bcd,
+    output [5:0] hour_ten_disp_bcd
 );
-    localparam [3:0] DIGIT_BLANK = 4'd10;
-    localparam MODE_TIME_SET  = 3'b001;
-    localparam MODE_ALARM     = 3'b010;
-    localparam MODE_COUNTDOWN = 3'b100;
+    localparam [5:0] DISP_2     = 6'd2;
+    localparam [5:0] DISP_1     = 6'd1;
+    localparam [5:0] DISP_0     = 6'd0;
+    localparam [5:0] DISP_BLANK = 6'd10;
+    localparam [5:0] DISP_N     = 6'd16;
+    localparam [5:0] DISP_T     = 6'd17;
+    localparam [5:0] DISP_A     = 6'd18;
+    localparam [5:0] DISP_H     = 6'd19;
+    localparam [5:0] DISP_C     = 6'd20;
+    localparam [5:0] DISP_S     = 6'd21;
+    localparam [5:0] DISP_O     = 6'd22;
+    localparam [5:0] DISP_F     = 6'd23;
+    localparam [5:0] DISP_R     = 6'd24;
+    localparam [5:0] DISP_P     = 6'd25;
+    localparam [5:0] DISP_D     = 6'd26;
+    localparam [5:0] DISP_B     = 6'd27;
+    localparam [5:0] DISP_E     = 6'd28;
+    localparam [5:0] DISP_L     = 6'd29;
+    localparam [5:0] DISP_U     = 6'd30;
+    localparam [5:0] DISP_K     = 6'd31;
 
-    reg [3:0] sec_unit_reg;
-    reg [3:0] sec_ten_reg;
-    reg [3:0] min_unit_reg;
-    reg [3:0] min_ten_reg;
-    reg [3:0] hour_unit_reg;
-    reg [3:0] hour_ten_reg;
+    localparam MODE_NORMAL      = 3'b000;
+    localparam MODE_TIME_SET    = 3'b001;
+    localparam MODE_ALARM       = 3'b010;
+    localparam MODE_HOUR_FORMAT = 3'b011;
+    localparam MODE_COUNTDOWN   = 3'b100;
+    localparam MODE_SCHEDULE    = 3'b101;
 
+    reg [5:0] mode_reg;
+    reg [5:0] status_reg;
+    reg [5:0] sec_unit_reg;
+    reg [5:0] sec_ten_reg;
+    reg [5:0] min_unit_reg;
+    reg [5:0] min_ten_reg;
+    reg [5:0] hour_unit_reg;
+    reg [5:0] hour_ten_reg;
+
+    assign mode_disp_code      = mode_reg;
+    assign status_disp_code    = status_reg;
     assign sec_unit_disp_bcd  = sec_unit_reg;
     assign sec_ten_disp_bcd   = sec_ten_reg;
     assign min_unit_disp_bcd  = min_unit_reg;
@@ -47,88 +110,324 @@ module display_ctrl(
     assign hour_unit_disp_bcd = hour_unit_reg;
     assign hour_ten_disp_bcd  = hour_ten_reg;
 
+    function [5:0] slot_digit;
+        input [2:0] slot;
+        begin
+            slot_digit = {3'b000, slot} + 6'd1;
+        end
+    endfunction
+
+    function [5:0] schedule_type_char;
+        input [2:0] type_index;
+        input [2:0] char_index;
+        begin
+            schedule_type_char = DISP_BLANK;
+
+            case (type_index)
+                3'd0: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_C;
+                        3'd1: schedule_type_char = DISP_L;
+                        3'd2: schedule_type_char = DISP_A;
+                        3'd3: schedule_type_char = DISP_S;
+                        3'd4: schedule_type_char = DISP_S;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd1: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_C;
+                        3'd1: schedule_type_char = DISP_O;
+                        3'd2: schedule_type_char = DISP_N;
+                        3'd3: schedule_type_char = DISP_F;
+                        3'd4: schedule_type_char = DISP_0;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd2: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_L;
+                        3'd1: schedule_type_char = DISP_A;
+                        3'd2: schedule_type_char = DISP_B;
+                        3'd3: schedule_type_char = DISP_0;
+                        3'd4: schedule_type_char = DISP_0;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd3: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_T;
+                        3'd1: schedule_type_char = DISP_E;
+                        3'd2: schedule_type_char = DISP_S;
+                        3'd3: schedule_type_char = DISP_T;
+                        3'd4: schedule_type_char = DISP_0;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd4: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_D;
+                        3'd1: schedule_type_char = DISP_U;
+                        3'd2: schedule_type_char = DISP_E;
+                        3'd3: schedule_type_char = DISP_0;
+                        3'd4: schedule_type_char = DISP_0;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd5: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_B;
+                        3'd1: schedule_type_char = DISP_R;
+                        3'd2: schedule_type_char = DISP_E;
+                        3'd3: schedule_type_char = DISP_A;
+                        3'd4: schedule_type_char = DISP_K;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                3'd6: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_E;
+                        3'd1: schedule_type_char = DISP_A;
+                        3'd2: schedule_type_char = DISP_T;
+                        3'd3: schedule_type_char = DISP_0;
+                        3'd4: schedule_type_char = DISP_0;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+                default: begin
+                    case (char_index)
+                        3'd0: schedule_type_char = DISP_S;
+                        3'd1: schedule_type_char = DISP_P;
+                        3'd2: schedule_type_char = DISP_O;
+                        3'd3: schedule_type_char = DISP_R;
+                        3'd4: schedule_type_char = DISP_T;
+                        default: schedule_type_char = DISP_1;
+                    endcase
+                end
+            endcase
+        end
+    endfunction
+
     always @(*) begin
-        sec_unit_reg  = sec_unit_time_bcd;
-        sec_ten_reg   = sec_ten_time_bcd;
-        min_unit_reg  = min_unit_time_bcd;
-        min_ten_reg   = min_ten_time_bcd;
-        hour_unit_reg = hour_unit_time_bcd;
-        hour_ten_reg  = hour_ten_time_bcd;
+        mode_reg      = DISP_N;
+        status_reg    = DISP_BLANK;
+        sec_unit_reg  = {2'b00, sec_unit_time_bcd};
+        sec_ten_reg   = {2'b00, sec_ten_time_bcd};
+        min_unit_reg  = {2'b00, min_unit_time_bcd};
+        min_ten_reg   = {2'b00, min_ten_time_bcd};
+        hour_unit_reg = {2'b00, disp_hour_unit_time_bcd};
+        hour_ten_reg  = {2'b00, disp_hour_ten_time_bcd};
 
         case (mode_state)
+            MODE_NORMAL: begin
+                mode_reg   = DISP_N;
+                status_reg = setting_active ? DISP_D : DISP_BLANK;
+
+                if (setting_active) begin
+                    hour_ten_reg  = {2'b00, date_month_ten_bcd};
+                    hour_unit_reg = {2'b00, date_month_unit_bcd};
+                    min_ten_reg   = {2'b00, date_day_ten_bcd};
+                    min_unit_reg  = {2'b00, date_day_unit_bcd};
+                    sec_ten_reg   = DISP_0;
+                    sec_unit_reg  = {3'b000, date_weekday};
+                end
+            end
+
+            MODE_TIME_SET: begin
+                mode_reg   = DISP_T;
+                status_reg = DISP_BLANK;
+
+                if (setting_active) begin
+                    hour_unit_reg = {2'b00, hour_unit_time_bcd};
+                    hour_ten_reg  = {2'b00, hour_ten_time_bcd};
+                end
+            end
+
             MODE_ALARM: begin
-                sec_unit_reg  = alarm_sec_unit_bcd;
-                sec_ten_reg   = alarm_sec_ten_bcd;
-                min_unit_reg  = alarm_min_unit_bcd;
-                min_ten_reg   = alarm_min_ten_bcd;
-                hour_unit_reg = alarm_hour_unit_bcd;
-                hour_ten_reg  = alarm_hour_ten_bcd;
+                mode_reg      = DISP_A;
+                if (setting_active) begin
+                    status_reg    = (selected_alarm_enable == 1'b1) ? DISP_O : DISP_F;
+                    sec_unit_reg  = {2'b00, alarm_sec_unit_bcd};
+                    sec_ten_reg   = {2'b00, alarm_sec_ten_bcd};
+                    min_unit_reg  = {2'b00, alarm_min_unit_bcd};
+                    min_ten_reg   = {2'b00, alarm_min_ten_bcd};
+                    hour_unit_reg = {2'b00, alarm_hour_unit_bcd};
+                    hour_ten_reg  = {2'b00, alarm_hour_ten_bcd};
+                end else if (next_alarm_valid) begin
+                    status_reg    = DISP_O;
+                    sec_unit_reg  = {2'b00, next_alarm_sec_unit_bcd};
+                    sec_ten_reg   = {2'b00, next_alarm_sec_ten_bcd};
+                    min_unit_reg  = {2'b00, next_alarm_min_unit_bcd};
+                    min_ten_reg   = {2'b00, next_alarm_min_ten_bcd};
+                    hour_unit_reg = {2'b00, next_alarm_hour_unit_bcd};
+                    hour_ten_reg  = {2'b00, next_alarm_hour_ten_bcd};
+                end else begin
+                    status_reg    = DISP_F;
+                    sec_unit_reg  = DISP_0;
+                    sec_ten_reg   = DISP_0;
+                    min_unit_reg  = DISP_0;
+                    min_ten_reg   = DISP_0;
+                    hour_unit_reg = DISP_0;
+                    hour_ten_reg  = DISP_0;
+                end
+            end
+
+            MODE_HOUR_FORMAT: begin
+                mode_reg   = DISP_H;
+                status_reg = hour_format_12h ? DISP_1 : DISP_2;
             end
 
             MODE_COUNTDOWN: begin
-                sec_unit_reg  = countdown_sec_unit_bcd;
-                sec_ten_reg   = countdown_sec_ten_bcd;
-                min_unit_reg  = countdown_min_unit_bcd;
-                min_ten_reg   = countdown_min_ten_bcd;
-                hour_unit_reg = countdown_hour_unit_bcd;
-                hour_ten_reg  = countdown_hour_ten_bcd;
+                mode_reg      = DISP_C;
+                status_reg    = (countdown_run == 1'b1) ? DISP_R : DISP_P;
+                sec_unit_reg  = {2'b00, countdown_sec_unit_bcd};
+                sec_ten_reg   = {2'b00, countdown_sec_ten_bcd};
+                min_unit_reg  = {2'b00, countdown_min_unit_bcd};
+                min_ten_reg   = {2'b00, countdown_min_ten_bcd};
+                hour_unit_reg = {2'b00, countdown_hour_unit_bcd};
+                hour_ten_reg  = {2'b00, countdown_hour_ten_bcd};
+            end
+
+            MODE_SCHEDULE: begin
+                mode_reg   = DISP_S;
+                status_reg = setting_active ? slot_digit(schedule_selected_slot) :
+                             next_schedule_valid ? slot_digit(next_schedule_slot) :
+                             slot_digit(schedule_selected_slot);
+
+                if (setting_active && schedule_type_page) begin
+                    hour_ten_reg  = schedule_type_char(selected_schedule_type, 3'd0);
+                    hour_unit_reg = schedule_type_char(selected_schedule_type, 3'd1);
+                    min_ten_reg   = schedule_type_char(selected_schedule_type, 3'd2);
+                    min_unit_reg  = schedule_type_char(selected_schedule_type, 3'd3);
+                    sec_ten_reg   = schedule_type_char(selected_schedule_type, 3'd4);
+                    sec_unit_reg  = schedule_type_char(selected_schedule_type, 3'd5);
+                end else if (setting_active) begin
+                    sec_unit_reg  = {2'b00, schedule_sec_unit_bcd};
+                    sec_ten_reg   = {2'b00, schedule_sec_ten_bcd};
+                    min_unit_reg  = {2'b00, schedule_min_unit_bcd};
+                    min_ten_reg   = {2'b00, schedule_min_ten_bcd};
+                    hour_unit_reg = {2'b00, schedule_hour_unit_bcd};
+                    hour_ten_reg  = {2'b00, schedule_hour_ten_bcd};
+                end else if (next_schedule_valid) begin
+                    sec_unit_reg  = {2'b00, next_schedule_sec_unit_bcd};
+                    sec_ten_reg   = {2'b00, next_schedule_sec_ten_bcd};
+                    min_unit_reg  = {2'b00, next_schedule_min_unit_bcd};
+                    min_ten_reg   = {2'b00, next_schedule_min_ten_bcd};
+                    hour_unit_reg = {2'b00, next_schedule_hour_unit_bcd};
+                    hour_ten_reg  = {2'b00, next_schedule_hour_ten_bcd};
+                end else begin
+                    sec_unit_reg  = DISP_0;
+                    sec_ten_reg   = DISP_0;
+                    min_unit_reg  = DISP_0;
+                    min_ten_reg   = DISP_0;
+                    hour_unit_reg = DISP_0;
+                    hour_ten_reg  = DISP_0;
+                end
             end
 
             default: begin
             end
         endcase
 
-        if (edit_active && blink_hide) begin
+        if (setting_active && blink_hide) begin
             case (mode_state)
+                MODE_NORMAL: begin
+                    if (field_index == 3'd0) begin
+                        hour_unit_reg = DISP_BLANK;
+                        hour_ten_reg  = DISP_BLANK;
+                    end else if (field_index == 3'd1) begin
+                        min_unit_reg = DISP_BLANK;
+                        min_ten_reg  = DISP_BLANK;
+                    end else begin
+                        sec_unit_reg = DISP_BLANK;
+                        sec_ten_reg  = DISP_BLANK;
+                    end
+                end
+
                 MODE_TIME_SET: begin
                     if (field_index == 3'd0) begin
-                        hour_unit_reg = DIGIT_BLANK;
-                        hour_ten_reg  = DIGIT_BLANK;
+                        hour_unit_reg = DISP_BLANK;
+                        hour_ten_reg  = DISP_BLANK;
                     end else if (field_index == 3'd1) begin
-                        min_unit_reg = DIGIT_BLANK;
-                        min_ten_reg  = DIGIT_BLANK;
+                        min_unit_reg = DISP_BLANK;
+                        min_ten_reg  = DISP_BLANK;
                     end else begin
-                        sec_unit_reg = DIGIT_BLANK;
-                        sec_ten_reg  = DIGIT_BLANK;
+                        sec_unit_reg = DISP_BLANK;
+                        sec_ten_reg  = DISP_BLANK;
                     end
                 end
 
                 MODE_ALARM: begin
                     case (field_index)
-                        3'd0: begin
-                            hour_unit_reg = DIGIT_BLANK;
-                            hour_ten_reg  = DIGIT_BLANK;
-                        end
                         3'd1: begin
-                            min_unit_reg = DIGIT_BLANK;
-                            min_ten_reg  = DIGIT_BLANK;
+                            hour_unit_reg = DISP_BLANK;
+                            hour_ten_reg  = DISP_BLANK;
                         end
                         3'd2: begin
-                            sec_unit_reg = DIGIT_BLANK;
-                            sec_ten_reg  = DIGIT_BLANK;
+                            min_unit_reg = DISP_BLANK;
+                            min_ten_reg  = DISP_BLANK;
+                        end
+                        3'd3: begin
+                            sec_unit_reg = DISP_BLANK;
+                            sec_ten_reg  = DISP_BLANK;
+                        end
+                        3'd4: begin
+                            status_reg = DISP_BLANK;
                         end
                         default: begin
                         end
                     endcase
                 end
 
+                MODE_HOUR_FORMAT: begin
+                    status_reg = DISP_BLANK;
+                end
+
                 MODE_COUNTDOWN: begin
                     case (field_index)
                         3'd0: begin
-                            hour_unit_reg = DIGIT_BLANK;
-                            hour_ten_reg  = DIGIT_BLANK;
+                            hour_unit_reg = DISP_BLANK;
+                            hour_ten_reg  = DISP_BLANK;
                         end
                         3'd1: begin
-                            min_unit_reg = DIGIT_BLANK;
-                            min_ten_reg  = DIGIT_BLANK;
+                            min_unit_reg = DISP_BLANK;
+                            min_ten_reg  = DISP_BLANK;
                         end
                         3'd2: begin
-                            sec_ten_reg  = DIGIT_BLANK;
-                            sec_unit_reg = DIGIT_BLANK;
+                            sec_ten_reg  = DISP_BLANK;
+                            sec_unit_reg = DISP_BLANK;
                         end
                         default: begin
                         end
                     endcase
+                end
+
+                MODE_SCHEDULE: begin
+                    if (schedule_type_page) begin
+                        hour_unit_reg = DISP_BLANK;
+                        hour_ten_reg  = DISP_BLANK;
+                        min_unit_reg  = DISP_BLANK;
+                        min_ten_reg   = DISP_BLANK;
+                        sec_unit_reg  = DISP_BLANK;
+                        sec_ten_reg   = DISP_BLANK;
+                    end else begin
+                        case (field_index)
+                        3'd0: begin
+                            hour_unit_reg = DISP_BLANK;
+                            hour_ten_reg  = DISP_BLANK;
+                        end
+                        3'd1: begin
+                            min_unit_reg = DISP_BLANK;
+                            min_ten_reg  = DISP_BLANK;
+                        end
+                        3'd2: begin
+                            sec_unit_reg = DISP_BLANK;
+                            sec_ten_reg  = DISP_BLANK;
+                        end
+                        default: begin
+                        end
+                        endcase
+                    end
                 end
 
                 default: begin
