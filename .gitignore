@@ -25,6 +25,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+software/clocklink_studio/build/
+software/clocklink_studio/dist/
 *.bit
 *.bin
 *.dcp

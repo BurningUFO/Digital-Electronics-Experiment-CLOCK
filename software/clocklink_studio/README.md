@@ -75,6 +75,28 @@ GUI 使用 Tkinter，不增加额外依赖。当前面板包含：
 - `Control`：闹钟槽读写、日程槽读写、倒计时设置/启动/停止/查询。
 - `Log`：显示每次请求的回复帧，mock 下可用于完整演示；真实串口异步 `REPLY/EVENT` 持续监听仍是后续增强项。
 
+## Windows EXE
+
+已提供桌面入口 `desktop.py`，可双击启动后选择串口或 mock 模式：
+
+```bash
+python desktop.py
+```
+
+当前已用 PyInstaller 生成：
+
+```text
+software/clocklink_studio/dist/ClockLinkStudio.exe
+```
+
+重新打包命令：
+
+```bash
+python -m PyInstaller --noconfirm ClockLinkStudio.spec
+```
+
+打包产物 `dist/ClockLinkStudio.exe` 可以直接拷到 Windows 电脑运行。`build/` 是 PyInstaller 中间目录，不需要提交。
+
 ## 当前模块
 
 - `protocol/`：帧编解码、XOR 校验、命令构造。

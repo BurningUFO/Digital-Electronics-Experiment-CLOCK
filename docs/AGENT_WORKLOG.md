@@ -932,3 +932,73 @@ Phase:
 建议提交信息:
 
 - `chore: ignore local simulation and Python artifacts`
+
+### 2026-06-06 0147 - Phase 9 - PC 软件 EXE 打包
+
+Phase:
+
+- Phase 9：PC 软件打包交付
+
+完成内容:
+
+- 新增 `software/clocklink_studio/desktop.py`，提供双击启动入口。
+- 桌面入口启动后可选择自动枚举到的串口或 mock 模式，再打开现有 Tkinter GUI。
+- 使用 PyInstaller 打包生成 `software/clocklink_studio/dist/ClockLinkStudio.exe`。
+- 新增 `software/clocklink_studio/ClockLinkStudio.spec`，用于后续稳定重建 exe。
+- 更新 `software/clocklink_studio/README.md`，补充 exe 路径和重新打包命令。
+- 更新 `.gitignore`，忽略 PyInstaller `build/` 中间目录。
+
+修改文件:
+
+- `.gitignore`
+- `software/clocklink_studio/README.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `software/clocklink_studio/desktop.py`
+- `software/clocklink_studio/ClockLinkStudio.spec`
+- `software/clocklink_studio/dist/ClockLinkStudio.exe`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `python -m PyInstaller --version`
+- `python -c "import serial; print(serial.__version__)"`
+- `cd software/clocklink_studio; python -m py_compile main.py desktop.py ui/main_window.py transport/mock_transport.py transport/serial_transport.py`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python -m PyInstaller --noconfirm --onefile --windowed --name ClockLinkStudio desktop.py`
+- `cd software/clocklink_studio; Start-Process .\dist\ClockLinkStudio.exe --self-test ...`
+
+检查结果:
+
+- PyInstaller 可用，版本 `6.19.0`。
+- pyserial 可用，版本 `3.5`。
+- Python 编译检查通过。
+- `desktop.py --self-test` 通过。
+- `python -m pytest` 通过，15 个测试全部通过。
+- PyInstaller 成功生成 `dist/ClockLinkStudio.exe`，大小约 `11 MB`。
+- exe 自测退出码为 `0`。
+- 本阶段未重新运行 Vivado，因为只修改 PC 启动器、打包配置和文档。
+
+未完成/阻塞:
+
+- 未对真实 Nexys A7 USB-UART 做板级串口实测。
+- `dist/ClockLinkStudio.exe` 是本地二进制交付产物，当前不强制提交进 Git。
+
+风险:
+
+- Windows 首次运行未签名 exe 可能出现安全提示。
+- 真实串口异步 `REPLY/EVENT` 持续监听仍是后续增强项，当前 GUI 以同步命令日志为主。
+
+下一阶段计划:
+
+- 生成 bitstream，连接 Nexys A7 后运行 `dist/ClockLinkStudio.exe`，选择对应 COM 口并按 `docs/FINAL_DEMO_GUIDE.md` 实测。
+
+建议提交信息:
+
+- `feat(pc): add Windows desktop launcher for ClockLink Studio`
