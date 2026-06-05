@@ -69,15 +69,15 @@ python main.py --mock gui
 python main.py --port COM5 gui
 ```
 
-GUI 使用 Tkinter，不增加额外依赖。当前面板包含：
+GUI 使用 Tkinter，不增加额外依赖。当前默认中文界面，右上角可在 `中文 / English` 之间切换。当前面板包含：
 
-- `Connect`：HELLO、PING、STATUS、同步时间、读取时间、发送消息、读取 mock 消息槽。
-- `Control`：闹钟槽读写、日程槽读写、倒计时设置/启动/停止/查询。
-- `Log`：显示每次请求的回复帧，mock 下可用于完整演示；真实串口异步 `REPLY/EVENT` 持续监听仍是后续增强项。
+- `连接与消息 / Connect`：HELLO、PING、STATUS、同步时间、读取时间、发送消息、读取 mock 消息槽。
+- `功能控制 / Control`：闹钟槽读写、日程槽读写、倒计时设置/启动/停止/查询。
+- `通信日志 / Log`：显示每次请求的回复帧，mock 下可用于完整演示；真实串口异步 `REPLY/EVENT` 持续监听仍是后续增强项。
 
 ## Windows EXE
 
-已提供桌面入口 `desktop.py`，可双击启动后选择串口或 mock 模式：
+已提供桌面入口 `desktop.py`，可双击启动后选择串口或 mock 模式。启动窗口默认中文，也可切换为 English：
 
 ```bash
 python desktop.py

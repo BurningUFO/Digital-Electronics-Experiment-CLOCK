@@ -1002,3 +1002,61 @@ Phase:
 建议提交信息:
 
 - `feat(pc): add Windows desktop launcher for ClockLink Studio`
+
+### 2026-06-06 0156 - Phase 9 - PC GUI 中文友好化
+
+Phase:
+
+- Phase 9：PC 软件界面本地化
+
+完成内容:
+
+- `desktop.py` 启动窗口默认中文，增加 `中文 / English` 语言选择。
+- `ui/main_window.py` 主界面默认中文，右上角增加 `中文 / English` 切换。
+- 主界面标签、页签、按钮、错误前缀、日志中的消息正文提示均支持中英文。
+- 日程类型下拉框支持中文名称和英文名称切换，底层仍传递协议要求的数字 `type`。
+- 更新 `software/clocklink_studio/README.md`，说明中文默认界面和中英文切换。
+
+修改文件:
+
+- `software/clocklink_studio/desktop.py`
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/README.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m py_compile main.py desktop.py ui/main_window.py transport/mock_transport.py transport/serial_transport.py`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `cd software/clocklink_studio; python -m pytest`
+
+检查结果:
+
+- Python 编译检查通过。
+- `desktop.py --self-test` 通过。
+- `python -m pytest` 通过，15 个测试全部通过。
+- 本阶段未重新运行 Vivado，因为只修改 PC GUI 文本和启动器。
+
+未完成/阻塞:
+
+- 尚未在真实板卡上验证串口模式。
+
+风险:
+
+- Tkinter 字体由 Windows 系统决定，极少数精简系统若缺中文字体，中文显示可能退回到系统替代字体。
+
+下一阶段计划:
+
+- 重新打包 `dist/ClockLinkStudio.exe`，并在板级演示时使用中文界面。
+
+建议提交信息:
+
+- `feat(pc): add bilingual ClockLink Studio UI`
