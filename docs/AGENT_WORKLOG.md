@@ -1198,3 +1198,63 @@ Phase:
 建议提交信息:
 
 - `feat(pc): modernize ClockLink Studio interface`
+
+### 2026-06-06 1255 - Vivado 工程源文件修复
+
+Phase:
+
+- Phase 9：Vivado 工程交付修复
+
+完成内容:
+
+- 修复 Vivado 工程模式综合报错 `[Synth 8-439] module 'comm_ctrl' not found [clock.v:429]`。
+- 确认 `comm_ctrl.v` 文件本身存在，根因是 `clock_amd.xpr` 的 `sources_1` 文件集未包含 ClockLink 新增 HDL。
+- 在 `clock_amd.xpr` 中补入 `comm_ctrl.v`、`message_store.v`、`preset_reply_rom.v`、`protocol_builder.v`、`protocol_parser.v`、`uart_rx.v`、`uart_tx.v`。
+- 新增 `scripts/check_xpr_clocklink_sources.tcl`，用于打开 `clock_amd.xpr` 并检查 ClockLink 相关 HDL 是否进入 Vivado 工程文件集。
+
+修改文件:
+
+- `clock_amd.xpr`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `scripts/check_xpr_clocklink_sources.tcl`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `Select-String -Path clock_amd.xpr -Pattern "comm_ctrl|message_store|preset_reply_rom|protocol_builder|protocol_parser|uart_rx|uart_tx"`
+- `git diff --check`
+- `vivado -mode batch -source scripts/check_xpr_clocklink_sources.tcl`
+- `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
+
+检查结果:
+
+- 文本检查确认 `clock_amd.xpr` 已包含 7 个 ClockLink HDL 文件。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+- `check_xpr_clocklink_sources.tcl` 输出 `PASS: ClockLink source files are present in clock_amd.xpr`。
+- `run_phase_synth_check.tcl` 一开始超过 180 秒工具超时，但后台 Vivado 综合自然完成。
+- `vivado.log` 显示 `synth_design completed successfully`，未再出现 `Synth 8-439` 或 `module 'comm_ctrl' not found`。
+- 综合结果：`WNS=+1.232ns`、`TNS=0.000ns`、失败端点 `0`，所有用户约束满足。
+- Vivado 打开工程时仍输出一批 Board Store board part 警告，属于当前 Vivado 板卡库环境提示，不影响本次源文件缺失修复。
+
+未完成/阻塞:
+
+- 尚未生成 bitstream，尚未进行真实 Nexys A7 板级验证。
+
+风险:
+
+- `clock_amd.xpr` 是 Vivado 工程入口文件；本次必须修改它才能让 GUI 工程模式综合看到新增 HDL。
+- 工作区仍存在不属于本次修复的历史脏文件和一个 Vivado 生成的 `vivado_pid18336.str`，本次不处理。
+
+下一阶段计划:
+
+- 在 Vivado GUI 中重新打开 `clock_amd.xpr`，确认 `sources_1` 可见 ClockLink 通信模块，再执行 Generate Bitstream。
+
+建议提交信息:
+
+- `fix(fpga): add ClockLink HDL sources to Vivado project`
