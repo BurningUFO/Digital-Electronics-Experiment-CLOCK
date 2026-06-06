@@ -1258,3 +1258,60 @@ Phase:
 建议提交信息:
 
 - `fix(fpga): add ClockLink HDL sources to Vivado project`
+
+### 2026-06-06 1308 - Vivado GUI 旧工程覆盖排查
+
+Phase:
+
+- Phase 9：Vivado 工程使用排查
+
+完成内容:
+
+- 针对用户反馈“仍然显示找不到 `comm_ctrl`”继续排查。
+- 发现当前磁盘上的 `clock_amd.xpr` 曾被正在运行的 Vivado 进程改回旧 source 列表，Git diff 显示刚加入的 7 个 ClockLink HDL 条目被删除。
+- 再次恢复 `clock_amd.xpr` 中的 ClockLink HDL 条目。
+- 确认上一级还存在旧工程 `../CLOCK/clock_amd/clock_amd.xpr`，该旧工程不包含 ClockLink 通信模块；若打开旧工程也会继续报 `comm_ctrl` 找不到。
+- 新增 `scripts/add_clocklink_sources_to_project.tcl`，可在当前 Vivado Tcl Console 中执行，用当前 GUI 内存工程直接 `add_files`、`update_compile_order`、`save_project`，避免外部修改 `.xpr` 后被已打开的 GUI 工程覆盖。
+
+修改文件:
+
+- `clock_amd.xpr`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `scripts/add_clocklink_sources_to_project.tcl`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `Select-String -Path clock_amd.xpr -Pattern "comm_ctrl|message_store|preset_reply_rom|protocol_builder|protocol_parser|uart_rx|uart_tx"`
+- `Get-ChildItem -Path .. -Recurse -Filter clock_amd.xpr`
+- `git diff --check`
+
+检查结果:
+
+- 当前 `clock_amd.xpr` 文本检查已包含 `comm_ctrl.v`、`message_store.v`、`preset_reply_rom.v`、`protocol_builder.v`、`protocol_parser.v`、`uart_rx.v`、`uart_tx.v`。
+- 确认存在两个工程入口：当前最终工程 `clock_amd/clock_amd.xpr` 和旧副本 `CLOCK/clock_amd/clock_amd.xpr`。
+- `git diff --check` 未发现空白错误，仅输出 CRLF 提示。
+- 未再次运行 Vivado batch 打开工程，因为当前已有 Vivado 进程运行，继续并行打开同一工程可能造成 source 列表再次被 GUI 内存状态覆盖。
+
+未完成/阻塞:
+
+- 需要用户在当前已打开的 Vivado GUI 中执行 `source scripts/add_clocklink_sources_to_project.tcl`，或关闭 Vivado 后重新打开最终工程 `clock_amd/clock_amd.xpr`。
+
+风险:
+
+- 如果 Vivado GUI 仍保持旧内存工程并保存项目，它可能继续覆盖磁盘上的 `clock_amd.xpr`。
+- 如果打开的是旧副本 `CLOCK/clock_amd/clock_amd.xpr`，无论当前最终工程如何修复，旧工程仍会报找不到 ClockLink 模块。
+
+下一阶段计划:
+
+- 在 Vivado Tcl Console 中执行修复脚本后重新 Run Synthesis。
+
+建议提交信息:
+
+- `fix(fpga): add Vivado GUI source repair script`
