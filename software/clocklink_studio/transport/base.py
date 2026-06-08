@@ -6,5 +6,8 @@ class BaseTransport(ABC):
     def transact(self, frame_line: str) -> str:
         raise NotImplementedError
 
+    def poll_event(self) -> str | None:
+        return None
+
     def close(self) -> None:
         return None

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- 当前阶段：Phase 9 GUI 完整化、验收文档完成
+- 当前阶段：Phase 9 显示/UI 资源与时序优化已完成首轮
 - 当前目标：等待生成 bitstream 和 Nexys A7 板级 USB-UART/COMM 实测
 - 设计文档状态：原始 `docs/ClockLink_Studio_PC_Software_Design.md` 缺失，已在 Phase 0 按任务要求重建为基线草案
 
@@ -1315,3 +1315,433 @@ Phase:
 建议提交信息:
 
 - `fix(fpga): add Vivado GUI source repair script`
+
+### 2026-06-06 1525 - COMM OLED 小写消息显示修复
+
+Phase:
+
+- Phase 9：板级体验问题修复
+
+完成内容:
+
+- 针对用户上板反馈“发送 `hello fpga` 和 `hello` 后，`SW0` 正文空白、`SW1` 只显示 `H     FPGA` / `H`”进行排查。
+- 确认协议解析、消息缓存 slot 顺序和窗口重建不是主要问题；`message_store` 在连续保存 `hello fpga` 与 `hello` 后，`slot0`/`slot1` 数据正确。
+- 根因定位为 `oled_ui_display.v` 的 8x7 字库原先只覆盖部分大写字母和数字，消息正文里的小写 `e/l/o/f/p/g/a` 没有字形，OLED 绘制为空白。
+- 修改 OLED 字形函数：小写 `a-z` 映射为对应大写字形显示，协议和缓存仍保留原始 ASCII；同时补齐 `B/J/Q/V/Z` 和 `.`，避免预设回复 `Busy now.` 等文本缺字。
+- 新增 `tb_message_store.v`，覆盖两条连续消息和 `SW0/SW1` slot 选择。
+- 新增 `tb_oled_glyph.v`，覆盖小写映射和新增字形。
+- 更新 `sim/comm/README.md` 的通信仿真说明。
+
+修改文件:
+
+- `clock_amd.srcs/sources_1/new/oled_ui_display.v`
+- `sim/comm/README.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `sim/comm/tb_message_store.v`
+- `sim/comm/tb_oled_glyph.v`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `xvlog clock_amd.srcs/sources_1/new/message_store.v sim/comm/tb_message_store.v; xelab tb_message_store -s tb_message_store_sim; xsim tb_message_store_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/i2c_master_simple.v clock_amd.srcs/sources_1/new/oled_date_status.v clock_amd.srcs/sources_1/new/oled_countdown_status.v clock_amd.srcs/sources_1/new/oled_notify_status.v clock_amd.srcs/sources_1/new/oled_ui_display.v sim/comm/tb_oled_glyph.v; xelab tb_oled_glyph -s tb_oled_glyph_sim; xsim tb_oled_glyph_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/uart_rx.v clock_amd.srcs/sources_1/new/uart_tx.v clock_amd.srcs/sources_1/new/protocol_parser.v clock_amd.srcs/sources_1/new/protocol_builder.v clock_amd.srcs/sources_1/new/message_store.v clock_amd.srcs/sources_1/new/preset_reply_rom.v clock_amd.srcs/sources_1/new/comm_ctrl.v sim/comm/tb_comm_ctrl_msg.v; xelab tb_comm_ctrl_msg -s tb_comm_ctrl_msg_sim; xsim tb_comm_ctrl_msg_sim -runall`
+- `git diff --check`
+- `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
+
+检查结果:
+
+- `tb_message_store` 输出 `PASS tb_message_store`。
+- `tb_oled_glyph` 首次因 testbench timescale 与 OLED 源文件不一致失败；去掉 testbench timescale 后输出 `PASS tb_oled_glyph`。
+- `tb_comm_ctrl_msg` 输出 `PASS tb_comm_ctrl_msg`。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+- Vivado 综合通过，`vivado.log` 显示 `synth_design completed successfully`。
+- 综合时序满足约束：`WNS=+0.119ns`，`TNS=0.000ns`，失败端点 `0`，日志显示 `All user specified timing constraints are met.`。
+
+未完成/阻塞:
+
+- 需要重新综合、生成 bitstream 并重新下载到 Nexys A7 后，板上 OLED 才会显示修复后的字形。
+
+风险:
+
+- 当前小写采用映射为大写字形显示，OLED 上会显示为 `HELLO FPGA`，但协议、缓存和 PC 日志仍保留用户原始大小写。
+- OLED 仍不是完整 ASCII 字库，后续若要显示更多符号，可继续扩展 `glyph_row`。
+
+下一阶段计划:
+
+- 重新生成 bitstream 并下载到 Nexys A7，复测 `hello fpga`、`hello`、预设回复和 SW0/SW1 消息查看。
+
+建议提交信息:
+
+- `fix(fpga): render lowercase ClockLink OLED messages`
+
+### 2026-06-06 1605 - PC 串口主动 REPLY 监听修复
+
+Phase:
+
+- Phase 9：真实串口体验问题修复
+
+完成内容:
+
+- 针对用户反馈“COMM 回复模式按 `BTNR` 后电脑没有接收到”排查板端和 PC 端链路。
+- 确认 FPGA 端 `comm_ctrl` 发送 `REPLY` 的触发条件为：处于 COMM 模式、当前选中消息有效、已按 `BTNC` 进入回复模式、`BTNR` 产生脉冲且协议发送器不忙。
+- 确认 PC 端原 `SerialTransport` 只在 `transact()` 请求-响应期间读一行串口数据，GUI 没有后台监听，所以板子主动发出的 `REPLY` 不会自动显示。
+- 修改 `SerialTransport`：新增后台读取线程、接收队列和主动帧事件队列；`transact()` 会按请求 `SEQ` 匹配当前命令响应，遇到其他 `SEQ` 的主动帧先放入事件队列。
+- 修改 GUI：每 100ms 轮询串口主动帧；收到 `REPLY` 后在底部日志显示原始帧，并在聊天框显示 HEX 解码后的预设回复文本。
+- 新增串口传输层单元测试，覆盖“主动 `REPLY` 先到、命令响应后到”的队列分流场景。
+- 更新 PC 软件 README 和设计文档。
+- 重新打包 `software/clocklink_studio/dist/ClockLinkStudio.exe`。
+
+修改文件:
+
+- `software/clocklink_studio/transport/base.py`
+- `software/clocklink_studio/transport/serial_transport.py`
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/README.md`
+- `docs/ClockLink_Studio_PC_Software_Design.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `software/clocklink_studio/tests/test_serial_transport.py`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python -m PyInstaller --noconfirm ClockLinkStudio.spec`
+- `cd software/clocklink_studio; .\dist\ClockLinkStudio.exe --self-test`
+- `xvlog clock_amd.srcs/sources_1/new/uart_rx.v clock_amd.srcs/sources_1/new/uart_tx.v clock_amd.srcs/sources_1/new/protocol_parser.v clock_amd.srcs/sources_1/new/protocol_builder.v clock_amd.srcs/sources_1/new/message_store.v clock_amd.srcs/sources_1/new/preset_reply_rom.v clock_amd.srcs/sources_1/new/comm_ctrl.v sim/comm/tb_comm_ctrl_reply.v; xelab tb_comm_ctrl_reply -s tb_comm_ctrl_reply_sim; xsim tb_comm_ctrl_reply_sim -runall`
+- `git diff --check`
+
+检查结果:
+
+- `python -m pytest` 通过，17 个测试全部通过。
+- PyInstaller 打包成功，输出目录为 `software/clocklink_studio/dist`。
+- `ClockLinkStudio.exe --self-test` 退出码为 0。
+- `tb_comm_ctrl_reply` 输出 `PASS tb_comm_ctrl_reply`，确认 FPGA 端在回复模式下按 `BTNR` 可构造并发送 `REPLY`。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+
+未完成/阻塞:
+
+- 尚未在真实 Nexys A7 串口上验证 `BTNR -> REPLY -> GUI 聊天气泡` 的完整链路。
+- 若板子端未进入回复模式或当前无有效消息，`BTNR` 仍不会发送 `REPLY`，这是 HDL 的预期保护条件。
+
+风险:
+
+- PC GUI 后台监听会把非当前请求 `SEQ` 的帧归类为主动帧；这符合当前协议的单 outstanding 命令模型。
+- 工作区仍存在不属于本次任务的历史脏文件和未跟踪文档，本次未处理。
+
+下一阶段计划:
+
+- 使用新版 `ClockLinkStudio.exe` 打开真实串口，按完整 COMM 流程复测预设回复。
+
+建议提交信息:
+
+- `fix(pc): listen for FPGA reply frames in serial GUI`
+
+### 2026-06-06 1625 - 显示/UI 组合路径优化
+
+Phase:
+
+- Phase 9：FPGA 显示/UI 资源与时序优化
+
+本次目标:
+
+- 针对当前资源占比中 LUT 偏高但不危险的情况，优先降低显示/UI/多模式选择带来的组合逻辑复杂度。
+- 缩短数码管显示链路组合路径，减小扫描模块 mux，降低下游扇出，让时序更容易收敛。
+- 保持 `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` 七个模式行为不退化。
+
+完成内容:
+
+- `display_ctrl` 新增 `clk/rst`，将 8 个显示字符输出改为寄存输出，在多模式显示选择之后建立一级寄存边界。
+- 保留 `display_ctrl` 原有模式内容、字段闪烁和 COMM 状态显示逻辑，只把组合结果从 `*_next` 寄存到输出端。
+- `nexys_seg_scan` 删除未使用的旧 BCD/`full_display_en` 接口和 5 个冗余 `seg_7` 译码实例，只保留当前实际使用的 `digit_code_bus + dp_mask` 全 8 位字符扫描接口。
+- `nexys_seg_scan` 将 `AN/CA..CG/DP` 板级输出寄存化，减少扫描译码后的直接组合输出路径。
+- `clock.v` 同步更新 `display_ctrl` 实例端口。
+- `clock_amd_top.v` 同步删除 `nexys_seg_scan` 实例中恒为 0 或恒为 1 的旧接口连接。
+- `oled_ui_display` 删除未使用的 `render_comm_message_window_ascii` 512-bit 副本寄存器，保留实际渲染使用的四行 16 字符寄存器。
+- 未新增 UART 协议命令，未修改 PC 软件行为，未改变顶层板级端口和 `.xdc` 约束。
+
+修改文件:
+
+- `clock_amd.srcs/sources_1/new/display_ctrl.v`
+- `clock_amd.srcs/sources_1/new/clock.v`
+- `clock_amd.srcs/sources_1/new/nexys_seg_scan.v`
+- `clock_amd.srcs/sources_1/new/clock_amd_top.v`
+- `clock_amd.srcs/sources_1/new/oled_ui_display.v`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `xvlog` 全源 Verilog 语法检查
+- `xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision clock_amd_top -s clock_amd_top_elab`
+- `xvlog clock_amd.srcs/sources_1/new/message_store.v sim/comm/tb_message_store.v; xelab tb_message_store -s tb_message_store_sim; xsim tb_message_store_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/i2c_master_simple.v clock_amd.srcs/sources_1/new/oled_date_status.v clock_amd.srcs/sources_1/new/oled_countdown_status.v clock_amd.srcs/sources_1/new/oled_notify_status.v clock_amd.srcs/sources_1/new/oled_ui_display.v sim/comm/tb_oled_glyph.v; xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision tb_oled_glyph -s tb_oled_glyph_sim; xsim tb_oled_glyph_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/uart_rx.v clock_amd.srcs/sources_1/new/uart_tx.v clock_amd.srcs/sources_1/new/protocol_parser.v clock_amd.srcs/sources_1/new/protocol_builder.v clock_amd.srcs/sources_1/new/message_store.v clock_amd.srcs/sources_1/new/preset_reply_rom.v clock_amd.srcs/sources_1/new/comm_ctrl.v sim/comm/tb_comm_ctrl_msg.v; xelab tb_comm_ctrl_msg -s tb_comm_ctrl_msg_sim; xsim tb_comm_ctrl_msg_sim -runall`
+- `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
+- `git diff --check`
+
+检查结果:
+
+- 全源 `xvlog` 通过。
+- 顶层 `xelab` 通过；由于工程中仍混有带/不带 `timescale` 的旧模块，本次使用 XSim override 参数完成展开检查。
+- `tb_message_store` 输出 `PASS tb_message_store`。
+- `tb_oled_glyph` 输出 `PASS tb_oled_glyph`。
+- `tb_comm_ctrl_msg` 输出 `PASS tb_comm_ctrl_msg`。
+- Vivado 综合通过，`synth_design completed successfully`。
+- 综合时序满足约束：`WNS=+0.119ns`、`TNS=0.000ns`、失败端点 `0`，日志显示 `All user specified timing constraints are met.`。
+- 本次综合报告中的主要单元计数：`LUT6 11178`、`MUXF7 2606`、`MUXF8 1132`、`FDRE 15212`。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+
+未完成/阻塞:
+
+- 尚未生成 bitstream，尚未进行 Nexys A7 板级复测。
+- 本阶段只做显示/UI 结构性降复杂度，未做 OLED 字库/文本渲染深度重构。
+
+已知问题:
+
+- 当前最差路径仍在 `u_oled_ui_display/page_data...`、`render_comm_msg_line... -> page_data_byte_reg` 一类 OLED 文本/字模组合路径，七段数码管链路已被寄存边界隔离。
+- Vivado batch 在报告输出后出现一次 `ERROR: [Common 17-354] Could not open 'C' for writing`，但命令退出码为 0，且日志确认综合和时序均已通过；若后续自动化脚本依赖报告文件，需要继续观察该输出路径问题。
+- `protocol_parser` 既有综合警告未在本阶段处理。
+- 工作区仍存在不属于本次任务的历史脏文件和未跟踪文件，本次未回退。
+
+下一阶段计划:
+
+- 生成 bitstream 并上板回归七个模式、数码管扫描、OLED COMM 消息显示和 USB-UART 链路。
+- 若需要继续增加时序裕量，下一阶段单独优化 OLED：把 `page_data()` 的文本/字模查表拆成更明确的流水或 ROM/table 结构，避免在一个周期内完成宽文本选择和字模译码。
+
+建议提交信息:
+
+- `perf(fpga): register display path and simplify seven-seg scan`
+
+### 2026-06-07 1659 - 全面时序优化与 routed 收敛
+
+Phase:
+
+- Phase 9：FPGA 时序优化收尾，重点处理 routed 后真实违例路径。
+
+本次目标:
+
+- 针对 routed 实现报告中的严重负时序 `WNS=-1.432ns`、`TNS=-387.338ns`、失败端点 515 个，继续降低 UI/通信显示路径的组合复杂度和布线压力。
+- 优先处理真实最差路径：`u_clock/u_comm_ctrl/u_message_store/window_build_index... -> selected_window_ascii_reg[...]`，该路径数据延迟 11.129ns，其中布线 7.593ns，占 68%。
+- 保持 `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` 行为不退化，不新增 UART 协议命令。
+
+完成内容:
+
+- `message_store` 将 1600 字节消息正文存储显式约束为 Block RAM，并把 64 字节窗口输出拆为 `selected_window_mem[0:63]` 字节寄存数组，再通过 generate 打包为原有 `selected_window_ascii` 总线。
+- `message_store` 将窗口重建从“一周期宽总线读/写 mux”改为 3 阶段流水：发起 BRAM 地址、同步读出、写入窗口字节，消除对 `selected_window_ascii[511:0]` 的大组合选择。
+- `message_store` 拆分正文 RAM 写入和窗口读取 always 块，Vivado 已将 `text_mem_reg` 推断为 `RAMB18E1`。
+- `oled_ui_display` 将 OLED 字节生成从“页面选择 + 文本选择 + 字模译码同周期完成”拆成 4 阶段：锁存坐标、计算页面/文本信息、字模列译码、发送 I2C 数据字节。
+- `oled_ui_display` 保留原页面内容逻辑，同时把渲染路径中的宽文本选择和 `glyph_column()` 断开，缩短 OLED 页数据组合路径。
+- 修正 `tb_message_store` 中测试激励和 DUT 在同一 `posedge clk` 采样的竞争问题，并按新窗口重建流水增加等待周期。
+- 新增 `scripts/run_phase_impl_timing_check.tcl`，用于非工程模式执行 synth/opt/place/phys_opt/route/phys_opt 并输出 routed timing，避免只看综合时序。
+
+修改文件:
+
+- `clock_amd.srcs/sources_1/new/message_store.v`
+- `clock_amd.srcs/sources_1/new/oled_ui_display.v`
+- `sim/comm/tb_message_store.v`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `scripts/run_phase_impl_timing_check.tcl`
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `xvlog clock_amd.srcs/sources_1/new/message_store.v sim/comm/tb_message_store.v`
+- `xelab tb_message_store -s tb_message_store_sim; xsim tb_message_store_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/uart_rx.v clock_amd.srcs/sources_1/new/uart_tx.v clock_amd.srcs/sources_1/new/protocol_parser.v clock_amd.srcs/sources_1/new/protocol_builder.v clock_amd.srcs/sources_1/new/message_store.v clock_amd.srcs/sources_1/new/preset_reply_rom.v clock_amd.srcs/sources_1/new/comm_ctrl.v sim/comm/tb_comm_ctrl_msg.v`
+- `xelab tb_comm_ctrl_msg -s tb_comm_ctrl_msg_sim; xsim tb_comm_ctrl_msg_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/i2c_master_simple.v clock_amd.srcs/sources_1/new/oled_date_status.v clock_amd.srcs/sources_1/new/oled_countdown_status.v clock_amd.srcs/sources_1/new/oled_notify_status.v clock_amd.srcs/sources_1/new/oled_ui_display.v sim/comm/tb_oled_glyph.v`
+- `xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision tb_oled_glyph -s tb_oled_glyph_sim; xsim tb_oled_glyph_sim -runall`
+- 全源 `xvlog`
+- `xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision clock_amd_top -s clock_amd_top_elab`
+- `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
+- `vivado -mode batch -source scripts/run_phase_impl_timing_check.tcl`
+- `git diff --check`
+
+检查结果:
+
+- `tb_message_store` 输出 `PASS tb_message_store`。
+- `tb_comm_ctrl_msg` 输出 `PASS tb_comm_ctrl_msg`。
+- `tb_oled_glyph` 输出 `PASS tb_oled_glyph`。
+- 全源 `xvlog` 通过，顶层 `xelab` 通过。
+- Vivado 综合通过并满足约束，最新综合检查显示 `Slack (MET): 1.779ns`。
+- 最新综合主要单元计数：`LUT6 5453`、`MUXF7 597`、`MUXF8 136`、`FDRE 2426`、`RAMB18E1 1`。相对上一阶段综合记录的 `LUT6 11178`、`MUXF7 2606`、`MUXF8 1132`、`FDRE 15212`，大 mux 和寄存器占用明显下降。
+- 非工程 routed 实现检查通过：`WNS=+0.525ns`、`TNS=0.000ns`、失败端点 `0`，日志显示 `All user specified timing constraints are met.`。
+- routed 最差路径已从 `message_store selected_window_ascii` 转移到 `u_clock/u_comm_ctrl/u_protocol_builder/req_reply_text_ascii_reg[9] -> tx_buf_reg[69][0]`，Slack 为 `+0.525ns`，该路径布线占比约 78%，但已满足 100MHz 约束。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+
+未完成/阻塞:
+
+- 尚未生成 bitstream，尚未进行 Nexys A7 板级复测。
+- 本次只做时序结构优化，未改变顶层端口和 `.xdc` 约束。
+
+已知问题:
+
+- `protocol_parser` 既有 `msg_char_buf_reg` set/reset priority 综合警告仍存在，本阶段未处理。
+- `message_store/text_mem_reg` 推断为 Block RAM 后 Vivado 仍提示可选输出寄存器未合入 RAMB，当前 routed 时序已满足，暂不继续加深该读路径。
+- 当前 routed 最差路径在 `protocol_builder` 回复文本到 TX buffer 的写入逻辑，仍是布线占比较高的路径；由于已有 `+0.525ns` 裕量，本阶段不继续扩大改动面。
+- 工作区仍存在不属于本次任务的历史脏文件和未跟踪文件，本次未回退。
+
+下一阶段计划:
+
+- 生成 bitstream 并上板回归七个模式、数码管扫描、OLED COMM 消息显示和 USB-UART 链路。
+- 若后续约束提高或新增功能再次压缩裕量，优先单独优化 `protocol_builder` 的 TX buffer 构造路径，把回复帧拼接拆成更明确的多周期写入流程。
+
+建议提交信息:
+
+- `perf(fpga): pipeline message display paths for timing closure`
+
+### 2026-06-07 1759 - ClockLink Studio 聊天界面美化
+
+Phase:
+
+- Phase 9：PC GUI 完整化与演示体验优化
+
+本次目标:
+
+- 在不增加 GUI 依赖、不修改 UART 协议和服务层行为的前提下，优化 ClockLink Studio 软件界面观感。
+- 重点改善 `连接与消息 / Connect` 页聊天界面，让 PC 与 FPGA 的消息互动更适合演示。
+
+完成内容:
+
+- 调整 `ui/main_window.py` 全局视觉参数：窗口默认尺寸、浅色背景、主按钮颜色、边框色和聊天区配色。
+- 聊天消息从普通圆角气泡升级为带头像、时间戳、轻量阴影和左右尾部的气泡布局。
+- PC 消息保持右侧蓝色气泡，FPGA/mock 回复保持左侧白色气泡，系统消息居中显示。
+- 聊天标题区新增 `USB-UART` 状态标签和绿色状态点，强化通信场景识别。
+- 聊天画布增加边框层次，输入区改为独立浅色输入栏，减少表单感。
+- 同步更新 `software/clocklink_studio/README.md` 和 `docs/ClockLink_Studio_PC_Software_Design.md` 的 GUI 说明。
+- 未新增协议命令，未修改 FPGA HDL，未修改串口 transport 和服务层业务逻辑。
+
+修改文件:
+
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/README.md`
+- `docs/ClockLink_Studio_PC_Software_Design.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+删除文件:
+
+- 无
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m py_compile ui\main_window.py`
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `git diff --check`
+
+检查结果:
+
+- `py_compile` 通过。
+- `python -m pytest` 通过，17 个测试全部通过。
+- `python desktop.py --self-test` 退出码为 0。
+- `git diff --check` 未发现空白错误，仅输出 Git CRLF 转换提示。
+
+未完成/阻塞:
+
+- 未启动真实 GUI 进行人工视觉截图验收。
+- 尚未在真实 Nexys A7 串口环境下复测聊天收发链路。
+
+已知问题:
+
+- Tkinter 气泡在窗口 resize 后不会重排历史消息宽度；新消息会按当前窗口宽度生成。
+- 工作区仍存在不属于本次任务的历史脏文件和未跟踪文件，本次未回退。
+
+下一阶段计划:
+
+- 打开 `python main.py --mock gui` 做人工视觉检查；如需要分发，再重新运行 PyInstaller 打包。
+
+建议提交信息:
+
+- `style(pc): polish clocklink chat interface`
+
+### 2026-06-09 0100 - ClockLink Studio 代码与可执行文件上传准备
+
+Phase:
+
+- Phase 9：PC 软件发布与 Git 远端同步
+
+本次目标:
+
+- 将 ClockLink Studio 相关源码、测试、文档说明和 Windows 可执行程序提交并推送到 GitHub 仓库。
+- 只处理 PC 上位机相关文件，避免把当前工作区中的无关 HDL、Vivado 产物或其他历史脏文件带入提交。
+
+完成内容:
+
+- 检查当前 Git 分支为 `feature/clocklink-uart-comm`，远端为 `origin`。
+- 执行 `git fetch --all --prune`，确认远端访问正常；当前远端尚无 `feature/clocklink-uart-comm` 分支，后续推送需要设置 upstream。
+- 重新运行 PyInstaller，生成最新 `software/clocklink_studio/dist/ClockLinkStudio.exe`，确保 exe 包含当前聊天界面美化和串口主动帧监听逻辑。
+- 保持 `software/clocklink_studio/build/`、`__pycache__/`、`.pytest_cache/` 等中间产物忽略，仅准备强制纳入 `dist/ClockLinkStudio.exe`。
+- 未修改 FPGA HDL、`.xdc` 或 UART 协议。
+
+准备提交文件:
+
+- `software/clocklink_studio/README.md`
+- `software/clocklink_studio/transport/base.py`
+- `software/clocklink_studio/transport/serial_transport.py`
+- `software/clocklink_studio/ui/main_window.py`
+- `software/clocklink_studio/tests/test_serial_transport.py`
+- `software/clocklink_studio/dist/ClockLinkStudio.exe`
+- `docs/ClockLink_Studio_PC_Software_Design.md`
+- `docs/AGENT_WORKLOG.md`
+
+运行检查:
+
+- `cd software/clocklink_studio; python -m PyInstaller --noconfirm ClockLinkStudio.spec`
+- `cd software/clocklink_studio; python -m pytest`
+- `cd software/clocklink_studio; python desktop.py --self-test`
+- `cd software/clocklink_studio; .\dist\ClockLinkStudio.exe --self-test`
+
+检查结果:
+
+- PyInstaller 打包成功，输出 `software/clocklink_studio/dist/ClockLinkStudio.exe`，大小约 11.36 MB。
+- `python -m pytest` 通过，17 个测试全部通过。
+- `python desktop.py --self-test` 退出码为 0。
+- `ClockLinkStudio.exe --self-test` 退出码为 0。
+
+未完成/阻塞:
+
+- 尚未在真实 Nexys A7 串口环境下复测 exe 与 FPGA 的完整链路。
+- 尚未完成本条记录后的 commit/push；后续操作将单独 stage 相关文件并推送。
+
+已知问题:
+
+- GitHub 仓库中提交 exe 会增加仓库体积；当前 exe 小于 GitHub 100 MB 单文件限制，因此按用户要求纳入仓库。
+- 工作区仍存在不属于本次任务的历史脏文件和未跟踪文件，本次不会回退或提交。
+
+下一阶段计划:
+
+- stage 上述文件，提交 `feat(pc): publish clocklink studio app`，并推送到 `origin/feature/clocklink-uart-comm`。
+
+建议提交信息:
+
+- `feat(pc): publish clocklink studio app`

@@ -43,7 +43,9 @@ Phase 6 增加了 FPGA 主动 `REPLY` 事件的 mock 入口：
 python main.py --mock mock-reply --slot 0 --reply 1
 ```
 
-该命令会生成并解析一条 `REPLY` 帧，输出 payload 和解码后的回复正文，例如 `Busy now.`。真实串口异步监听还未完整实现，后续 GUI/serial 阶段需要增加持续读串口和事件日志窗口。
+该命令会生成并解析一条 `REPLY` 帧，输出 payload 和解码后的回复正文，例如 `Busy now.`。
+
+真实串口 GUI 已支持后台监听 FPGA 主动帧。板子在 COMM 回复模式下按 `BTNR` 发出的 `REPLY` 会自动显示到聊天框和底部通信日志，不需要 PC 先发送查询命令。
 
 ## 时间同步
 
@@ -69,10 +71,11 @@ python main.py --mock gui
 python main.py --port COM5 gui
 ```
 
-GUI 使用 Tkinter，不增加额外依赖。当前默认中文界面，右上角可在 `中文 / English` 之间切换。界面已按现代桌面工具风格整理为浅色背景、白色功能卡片、强调色主按钮和深色底部日志控制台。当前面板包含：
+GUI 使用 Tkinter，不增加额外依赖。当前默认中文界面，右上角可在 `中文 / English` 之间切换。界面已按现代桌面工具风格整理为浅色背景、白色功能卡片、强调色主按钮和深色底部日志控制台；聊天区进一步打磨为独立通信窗口，带 USB-UART 状态标签、头像、阴影气泡和更清晰的输入栏。当前面板包含：
 
 - `连接与消息 / Connect`：HELLO、PING、STATUS、同步时间、读取时间、发送消息、读取 mock 消息槽。
-  中间区域使用类似 Telegram 的聊天气泡布局：PC 发送内容为右侧蓝色气泡，FPGA/mock 回复为左侧白色气泡，系统提示居中显示；消息输入框支持回车发送。
+  中间区域使用聊天气泡布局：PC 发送内容为右侧蓝色气泡，FPGA/mock 回复为左侧白色气泡，系统提示居中显示；消息输入框支持回车发送。
+- 真实串口模式下，GUI 后台持续监听 USB-UART。收到 FPGA 主动 `REPLY` 时，会在日志中显示原始帧，并在聊天框中显示解码后的预设回复文本。
 - `功能控制 / Control`：闹钟槽读写、日程槽读写、倒计时设置/启动/停止/查询，按功能卡片分组。
 - `通信日志 / Log`：日志固定在整个窗口下半部分，不再作为单独页签；每次请求、回复帧和错误都会实时追加到底部日志。日志栏右上角提供 `缩小日志 / 默认大小 / 放大日志` 按钮，方便在调试和操作之间切换空间。
 
@@ -102,6 +105,6 @@ python -m PyInstaller --noconfirm ClockLinkStudio.spec
 
 - `protocol/`：帧编解码、XOR 校验、命令构造。
 - `transport/mock_transport.py`：不接 FPGA 的 mock 板子。
-- `transport/serial_transport.py`：真实串口接口，依赖 `pyserial`。
+- `transport/serial_transport.py`：真实串口接口，依赖 `pyserial`，含后台读取线程和主动帧队列。
 - `services/`：时间、消息、闹钟、日程、倒计时服务封装。
 - `ui/main_window.py`：Tkinter GUI 演示面板。

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from protocol.codec import FrameError, hex_to_ascii_text, parse_payload
+from protocol.codec import FrameError, decode_frame, hex_to_ascii_text, parse_payload
 
 
 SCHEDULE_TYPE_LABELS = {
@@ -81,6 +81,8 @@ TEXT = {
         "empty_message": "请输入消息内容。",
         "message_stored": "消息已发送，FPGA 返回",
         "no_message": "该槽位暂无消息。",
+        "event_frame": "主动帧",
+        "reply_event": "板子预设回复",
     },
     "en": {
         "title": "ClockLink Studio",
@@ -133,6 +135,8 @@ TEXT = {
         "empty_message": "Enter a message first.",
         "message_stored": "Message sent, FPGA replied",
         "no_message": "No message in this slot.",
+        "event_frame": "event",
+        "reply_event": "Board preset reply",
     },
 }
 
@@ -145,19 +149,23 @@ LANGUAGE_OPTIONS = {
 LANGUAGE_NAMES = {value: key for key, value in LANGUAGE_OPTIONS.items()}
 
 COLORS = {
-    "window": "#eef3f8",
+    "window": "#f2f5f8",
     "surface": "#ffffff",
-    "surface_soft": "#f7f9fc",
-    "border": "#d9e2ec",
+    "surface_soft": "#f7fafc",
+    "border": "#d8e1ea",
     "text": "#172033",
     "muted": "#667085",
-    "primary": "#2aabee",
-    "primary_dark": "#1686bd",
-    "bubble_pc": "#2aabee",
+    "primary": "#2186d9",
+    "primary_dark": "#1769aa",
+    "accent": "#20a98b",
+    "accent_soft": "#dff5ee",
+    "bubble_pc": "#2186d9",
     "bubble_fpga": "#ffffff",
-    "bubble_system": "#dfe7ef",
-    "chat": "#e8eef5",
-    "log_bg": "#111827",
+    "bubble_system": "#e7edf4",
+    "bubble_shadow": "#c7d3df",
+    "chat": "#edf2f6",
+    "chat_border": "#d5e0ea",
+    "log_bg": "#111927",
     "log_fg": "#dbeafe",
 }
 
@@ -174,14 +182,16 @@ class ClockLinkWindow:
 
         root = tk.Tk()
         root.title(TEXT[self.language]["title"])
-        root.minsize(980, 680)
+        root.geometry("1120x760")
+        root.minsize(1040, 700)
         root.configure(bg=COLORS["window"])
 
         body_font = tkfont.Font(family="Microsoft YaHei UI", size=10)
         strong_font = tkfont.Font(family="Microsoft YaHei UI", size=10, weight="bold")
-        title_font = tkfont.Font(family="Microsoft YaHei UI", size=18, weight="bold")
+        title_font = tkfont.Font(family="Microsoft YaHei UI", size=17, weight="bold")
         subtitle_font = tkfont.Font(family="Microsoft YaHei UI", size=10)
         small_font = tkfont.Font(family="Microsoft YaHei UI", size=9)
+        tiny_font = tkfont.Font(family="Microsoft YaHei UI", size=8)
         code_font = tkfont.Font(family="Consolas", size=9)
         root.option_add("*Font", body_font)
 
@@ -198,14 +208,21 @@ class ClockLinkWindow:
         style.configure("Card.TLabel", background=COLORS["surface"], foreground=COLORS["text"])
         style.configure("Muted.TLabel", background=COLORS["surface"], foreground=COLORS["muted"], font=small_font)
         style.configure("Soft.TLabel", background=COLORS["surface_soft"], foreground=COLORS["muted"], font=small_font)
-        style.configure("TButton", padding=(12, 8), font=body_font)
-        style.configure("Primary.TButton", padding=(14, 9), font=strong_font)
+        style.configure("TButton", padding=(12, 8), font=body_font, borderwidth=0)
+        style.configure(
+            "Primary.TButton",
+            padding=(14, 9),
+            font=strong_font,
+            borderwidth=0,
+            background=COLORS["primary"],
+            foreground="#ffffff",
+        )
         style.map(
             "Primary.TButton",
             foreground=[("active", "#ffffff"), ("!disabled", "#ffffff")],
             background=[("active", COLORS["primary_dark"]), ("!disabled", COLORS["primary"])],
         )
-        style.configure("Tool.TButton", padding=(10, 6), font=small_font)
+        style.configure("Tool.TButton", padding=(10, 6), font=small_font, borderwidth=0)
         style.configure("TEntry", fieldbackground="#ffffff", bordercolor=COLORS["border"], padding=6)
         style.configure("TCombobox", fieldbackground="#ffffff", bordercolor=COLORS["border"], padding=4)
         style.configure("TSpinbox", fieldbackground="#ffffff", bordercolor=COLORS["border"], padding=4)
@@ -256,6 +273,13 @@ class ClockLinkWindow:
             canvas.create_oval(x1, y2 - radius * 2, x1 + radius * 2, y2, **kwargs)
             canvas.create_oval(x2 - radius * 2, y2 - radius * 2, x2, y2, **kwargs)
 
+        def make_avatar(parent, initials: str, fill: str, text_fill: str):
+            avatar = tk.Canvas(parent, width=34, height=34, bg=COLORS["chat"], highlightthickness=0, bd=0)
+            avatar.create_oval(2, 2, 32, 32, fill=fill, outline=fill)
+            avatar.create_text(17, 17, text=initials, fill=text_fill, font=tiny_font)
+            avatar.bind("<MouseWheel>", on_chat_mousewheel)
+            return avatar
+
         def wrap_pixels(text: str, max_width: int, text_font) -> list[str]:
             lines: list[str] = []
             for paragraph in text.splitlines() or [""]:
@@ -285,19 +309,24 @@ class ClockLinkWindow:
             text_color = "#ffffff" if is_pc else COLORS["text"]
             meta_color = "#d8f1ff" if is_pc else COLORS["muted"]
             outline = fill if is_pc or not is_fpga else COLORS["border"]
-            max_width = max(300, min(560, chat_canvas.winfo_width() - 150))
+            max_width = max(300, min(620, chat_canvas.winfo_width() - 230))
             content_lines = wrap_pixels(text, max_width - 34, body_font)
             content_width = max([body_font.measure(line) for line in content_lines] + [body_font.measure(sender)])
-            bubble_width = min(max(180, content_width + 34), max_width)
+            min_width = 150 if not is_pc and not is_fpga else 190
+            bubble_width = min(max(min_width, content_width + 38), max_width)
+            if not is_pc and not is_fpga:
+                bubble_width = min(bubble_width, 440)
             line_height = body_font.metrics("linespace") + 3
             meta_height = small_font.metrics("linespace")
-            bubble_height = 16 + meta_height + 8 + len(content_lines) * line_height + 16
+            bubble_height = 18 + meta_height + 8 + len(content_lines) * line_height + 18
 
             row = tk.Frame(chat_body, bg=COLORS["chat"])
-            row.grid(row=chat_rows["value"], column=0, sticky="ew", padx=18, pady=(6, 8))
-            row.columnconfigure(0, weight=1)
-            row.columnconfigure(1, weight=0)
+            row.grid(row=chat_rows["value"], column=0, sticky="ew", padx=18, pady=(5, 9))
+            row.columnconfigure(0, weight=0)
+            row.columnconfigure(1, weight=1)
             row.columnconfigure(2, weight=1)
+            row.columnconfigure(3, weight=1)
+            row.columnconfigure(4, weight=0)
             chat_rows["value"] += 1
 
             bubble = tk.Canvas(
@@ -309,33 +338,68 @@ class ClockLinkWindow:
                 bd=0,
             )
             if is_pc:
-                bubble.grid(row=0, column=2, sticky="e")
+                bubble.grid(row=0, column=3, sticky="e", padx=(0, 8))
+                make_avatar(row, "PC", COLORS["primary"], "#ffffff").grid(row=0, column=4, sticky="se")
             elif is_fpga:
-                bubble.grid(row=0, column=0, sticky="w")
+                make_avatar(row, "FPGA", COLORS["accent"], "#ffffff").grid(row=0, column=0, sticky="sw")
+                bubble.grid(row=0, column=1, sticky="w", padx=(8, 0))
             else:
-                bubble.grid(row=0, column=0, columnspan=3)
+                bubble.grid(row=0, column=1, columnspan=3)
 
+            rounded_rect(
+                bubble,
+                4,
+                5,
+                bubble_width - 1,
+                bubble_height - 1,
+                18,
+                fill=COLORS["bubble_shadow"],
+                outline=COLORS["bubble_shadow"],
+            )
             rounded_rect(
                 bubble,
                 1,
                 1,
-                bubble_width - 2,
-                bubble_height - 2,
-                16,
+                bubble_width - 5,
+                bubble_height - 5,
+                18,
                 fill=fill,
                 outline=outline,
             )
+            if is_pc:
+                bubble.create_polygon(
+                    bubble_width - 19,
+                    bubble_height - 24,
+                    bubble_width - 4,
+                    bubble_height - 18,
+                    bubble_width - 19,
+                    bubble_height - 12,
+                    fill=fill,
+                    outline=fill,
+                )
+            elif is_fpga:
+                bubble.create_polygon(
+                    19,
+                    bubble_height - 24,
+                    4,
+                    bubble_height - 18,
+                    19,
+                    bubble_height - 12,
+                    fill=fill,
+                    outline=fill,
+                )
+                bubble.create_line(6, bubble_height - 18, 18, bubble_height - 23, fill=COLORS["border"])
             bubble.create_text(
-                17,
-                12,
+                19,
+                13,
                 anchor="nw",
                 text=f"{sender}  {timestamp}",
                 fill=meta_color,
                 font=small_font,
             )
             bubble.create_text(
-                17,
-                12 + meta_height + 8,
+                19,
+                13 + meta_height + 8,
                 anchor="nw",
                 text="\n".join(content_lines),
                 fill=text_color,
@@ -350,6 +414,28 @@ class ClockLinkWindow:
             line = f"{label}: {frame.seq_hex} {frame.cmd} {frame.payload}"
             status_var.set(line)
             append_log(line)
+
+        def handle_event_line(line: str) -> None:
+            try:
+                frame = decode_frame(line)
+                show_frame(tr("event_frame"), frame)
+                if frame.cmd == "REPLY":
+                    payload = parse_payload(frame.payload)
+                    reply_text = hex_to_ascii_text(payload.get("text", ""))
+                    append_chat("fpga_label", f"{tr('reply_event')}: {reply_text}")
+                else:
+                    append_chat("fpga_label", f"{frame.cmd} {frame.payload}")
+            except FrameError as exc:
+                append_log(f"{tr('decode_error')}: {line.strip()} ({exc})")
+                append_chat("system_label", f"{tr('decode_error')}: {exc}")
+
+        def poll_transport_events() -> None:
+            while True:
+                line = self.client.transport.poll_event()
+                if line is None:
+                    break
+                handle_event_line(line)
+            root.after(100, poll_transport_events)
 
         def run_action(label: str, callback) -> None:
             try:
@@ -616,15 +702,41 @@ class ClockLinkWindow:
         chat_panel.rowconfigure(1, weight=1)
 
         chat_header = tk.Frame(chat_panel, bg=COLORS["surface"])
-        chat_header.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 8))
+        chat_header.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 10))
         chat_header.columnconfigure(0, weight=1)
-        labels["chat_history"] = tk.Label(chat_header, bg=COLORS["surface"], fg=COLORS["text"], font=strong_font)
+        title_group = tk.Frame(chat_header, bg=COLORS["surface"])
+        title_group.grid(row=0, column=0, sticky="w")
+        labels["chat_history"] = tk.Label(title_group, bg=COLORS["surface"], fg=COLORS["text"], font=strong_font)
         labels["chat_history"].grid(row=0, column=0, sticky="w")
-        labels["chat_subtitle"] = tk.Label(chat_header, bg=COLORS["surface"], fg=COLORS["muted"], font=small_font)
+        labels["chat_subtitle"] = tk.Label(title_group, bg=COLORS["surface"], fg=COLORS["muted"], font=small_font)
         labels["chat_subtitle"].grid(row=1, column=0, sticky="w", pady=(2, 0))
+        link_chip = tk.Frame(chat_header, bg=COLORS["accent_soft"], highlightthickness=1, highlightbackground="#b9e7da")
+        link_chip.grid(row=0, column=1, sticky="e")
+        link_dot = tk.Canvas(link_chip, width=10, height=10, bg=COLORS["accent_soft"], highlightthickness=0, bd=0)
+        link_dot.grid(
+            row=0,
+            column=0,
+            padx=(10, 5),
+            pady=7,
+        )
+        link_dot.create_oval(1, 1, 9, 9, fill=COLORS["accent"], outline=COLORS["accent"])
+        tk.Label(
+            link_chip,
+            text="USB-UART",
+            bg=COLORS["accent_soft"],
+            fg="#16725f",
+            font=small_font,
+            padx=9,
+            pady=5,
+        ).grid(row=0, column=1, sticky="e")
 
-        chat_shell = tk.Frame(chat_panel, bg=COLORS["chat"])
-        chat_shell.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 10))
+        chat_shell = tk.Frame(
+            chat_panel,
+            bg=COLORS["chat"],
+            highlightthickness=1,
+            highlightbackground=COLORS["chat_border"],
+        )
+        chat_shell.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 12))
         chat_shell.columnconfigure(0, weight=1)
         chat_shell.rowconfigure(0, weight=1)
         chat_canvas = tk.Canvas(chat_shell, bg=COLORS["chat"], bd=0, highlightthickness=0)
@@ -639,16 +751,21 @@ class ClockLinkWindow:
         chat_canvas.bind("<Configure>", on_chat_canvas_configure)
         chat_canvas.bind("<MouseWheel>", on_chat_mousewheel)
 
-        composer = tk.Frame(chat_panel, bg=COLORS["surface"])
-        composer.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 14))
+        composer = tk.Frame(
+            chat_panel,
+            bg=COLORS["surface_soft"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        composer.grid(row=2, column=0, sticky="ew", padx=18, pady=(0, 16))
         composer.columnconfigure(0, weight=1)
-        labels["message"] = tk.Label(composer, bg=COLORS["surface"], fg=COLORS["muted"], font=small_font)
-        labels["message"].grid(row=0, column=0, sticky="w", pady=(0, 5))
+        labels["message"] = tk.Label(composer, bg=COLORS["surface_soft"], fg=COLORS["muted"], font=small_font)
+        labels["message"].grid(row=0, column=0, sticky="w", padx=12, pady=(9, 4))
         message_entry = ttk.Entry(composer, textvariable=message_var)
-        message_entry.grid(row=1, column=0, sticky="ew", padx=(0, 8))
+        message_entry.grid(row=1, column=0, sticky="ew", padx=(12, 8), pady=(0, 12))
         message_entry.bind("<Return>", lambda _event: send_message())
         labels["send"] = ttk.Button(composer, style="Primary.TButton", command=send_message)
-        labels["send"].grid(row=1, column=1, sticky="ew")
+        labels["send"].grid(row=1, column=1, sticky="ew", padx=(0, 12), pady=(0, 12))
 
         control_tab.columnconfigure(0, weight=1)
         control_tab.columnconfigure(1, weight=1)
@@ -762,4 +879,5 @@ class ClockLinkWindow:
         append_log(tr("log_started"))
         append_chat("system_label", tr("log_started"))
         root.after(120, lambda: set_log_height(log_height_index.get()))
+        root.after(100, poll_transport_events)
         root.mainloop()
