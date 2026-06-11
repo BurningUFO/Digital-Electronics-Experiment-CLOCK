@@ -10,10 +10,12 @@
 - `tb_comm_ctrl_reply.v`
 - `tb_comm_ctrl_time.v`
 - `tb_comm_ctrl_control.v`
+- `tb_message_store.v`
+- `tb_oled_glyph.v`
+- `tb_notification_hourly_chime.v`
 
 计划包括：
 
-- `tb_message_store.v`
 - `tb_protocol_parser.v`
 
 ## Phase 3 使用说明
@@ -51,6 +53,45 @@ XSim 命令示例：
 xvlog clock_amd.srcs/sources_1/new/uart_rx.v clock_amd.srcs/sources_1/new/uart_tx.v clock_amd.srcs/sources_1/new/protocol_parser.v clock_amd.srcs/sources_1/new/protocol_builder.v clock_amd.srcs/sources_1/new/message_store.v clock_amd.srcs/sources_1/new/preset_reply_rom.v clock_amd.srcs/sources_1/new/comm_ctrl.v sim/comm/tb_comm_ctrl_msg.v
 xelab tb_comm_ctrl_msg -s tb_comm_ctrl_msg_sim
 xsim tb_comm_ctrl_msg_sim -runall
+```
+
+`tb_message_store.v` 直接验证 16 槽消息缓存的 SW 选择语义。当前回归覆盖：
+
+- 先保存 `hello fpga`，再保存 `hello`。
+- `SW0 / slot0` 指向最新 `hello`。
+- `SW1 / slot1` 指向上一条 `hello fpga`。
+- 较短新消息不会污染较长旧消息，也不会残留旧消息正文。
+
+XSim 命令示例：
+
+```bash
+xvlog clock_amd.srcs/sources_1/new/message_store.v sim/comm/tb_message_store.v
+xelab tb_message_store -s tb_message_store_sim
+xsim tb_message_store_sim -runall
+```
+
+`tb_oled_glyph.v` 验证 COMM OLED 字库覆盖完整可打印 ASCII `0x20..0x7E`。当前检查确保空格保持空白，`0x21..0x7E` 每个字符至少存在像素，并确认小写字母不再退化为大写字形。
+
+XSim 命令示例：
+
+```bash
+xvlog clock_amd.srcs/sources_1/new/i2c_master_simple.v clock_amd.srcs/sources_1/new/oled_date_status.v clock_amd.srcs/sources_1/new/oled_countdown_status.v clock_amd.srcs/sources_1/new/oled_notify_status.v clock_amd.srcs/sources_1/new/oled_ui_display.v sim/comm/tb_oled_glyph.v
+xelab tb_oled_glyph -s tb_oled_glyph_sim
+xsim tb_oled_glyph_sim -runall
+```
+
+`tb_notification_hourly_chime.v` 验证整点报时短蜂鸣：
+
+- `hourly_chime_pulse` 触发两段 100 ms 短蜂鸣，中间间隔 100 ms。
+- 整点报时不改变 `notify_active/notify_type`，不弹出 OLED 提醒。
+- 同时出现闹钟事件时，闹钟提醒优先并覆盖整点报时。
+
+XSim 命令示例：
+
+```bash
+xvlog clock_amd.srcs/sources_1/new/notification_ctrl.v sim/comm/tb_notification_hourly_chime.v
+xelab tb_notification_hourly_chime -s tb_notification_hourly_chime_sim
+xsim tb_notification_hourly_chime_sim -runall
 ```
 
 ## Phase 6 使用说明

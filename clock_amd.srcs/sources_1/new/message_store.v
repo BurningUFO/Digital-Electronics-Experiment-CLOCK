@@ -21,7 +21,7 @@ module message_store(
     output reg         selected_unread,
     output reg [151:0] selected_timestamp_ascii,
     output reg [6:0]   selected_len,
-    output reg [511:0] selected_window_ascii,
+    output wire [511:0] selected_window_ascii,
     output reg [4:0]   message_count,
     output reg [4:0]   unread_count
 );
@@ -29,7 +29,8 @@ module message_store(
     reg unread_mem [0:15];
     reg [6:0] len_mem [0:15];
     reg [151:0] timestamp_mem [0:15];
-    reg [7:0] text_mem [0:1599];
+    (* ram_style = "block" *) reg [7:0] text_mem [0:1599];
+    reg [7:0] selected_window_mem [0:63];
 
     reg [3:0] head_slot;
     reg [3:0] write_slot;
@@ -40,11 +41,40 @@ module message_store(
     reg       selected_valid_reg;
     reg       window_build_active;
     reg [5:0] window_build_index;
+    reg [1:0] window_build_phase;
+    reg [10:0] window_read_addr;
+    reg [7:0] window_read_data;
+    reg       window_read_in_range;
     wire [3:0] next_head_slot;
+    wire [7:0] window_build_abs_index;
+    wire [7:0] store_char_index_ext;
+    wire [7:0] store_window_base_ext;
+    wire [7:0] store_window_end_ext;
+    wire       store_char_in_window;
+    wire [6:0] store_window_offset;
+    wire       text_store_valid;
+    wire [10:0] text_store_addr;
 
     integer slot_idx;
+    integer window_idx;
+    genvar window_out_idx;
 
     assign next_head_slot = head_slot - 1'b1;
+    assign window_build_abs_index = {1'b0, window_base_d} + {2'b00, window_build_index};
+    assign store_char_index_ext = {1'b0, store_char_index};
+    assign store_window_base_ext = {1'b0, window_base_index};
+    assign store_window_end_ext = store_window_base_ext + 8'd64;
+    assign store_char_in_window = (store_char_index_ext >= store_window_base_ext) &&
+                                  (store_char_index_ext < store_window_end_ext);
+    assign store_window_offset = store_char_index - window_base_index;
+    assign text_store_valid = store_char_valid && (store_char_index < 7'd100);
+    assign text_store_addr = text_addr(write_slot, store_char_index);
+
+    generate
+        for (window_out_idx = 0; window_out_idx < 64; window_out_idx = window_out_idx + 1) begin : g_window_out
+            assign selected_window_ascii[window_out_idx * 8 +: 8] = selected_window_mem[window_out_idx];
+        end
+    endgenerate
 
     function [3:0] logical_to_physical;
         input [3:0] logical_slot;
@@ -69,10 +99,25 @@ module message_store(
             selected_valid_reg <= (selected_slot < message_count) && valid_mem[logical_to_physical(selected_slot)];
             selected_len_reg <= len_mem[logical_to_physical(selected_slot)];
             window_build_index <= 6'd0;
+            window_build_phase <= 2'd0;
+            window_read_addr <= 11'd0;
+            window_read_in_range <= 1'b0;
             window_build_active <= 1'b1;
-            selected_window_ascii <= {64{8'h20}};
+            for (window_idx = 0; window_idx < 64; window_idx = window_idx + 1) begin
+                selected_window_mem[window_idx] <= 8'h20;
+            end
         end
     endtask
+
+    always @(posedge clk) begin
+        if (text_store_valid) begin
+            text_mem[text_store_addr] <= store_char_ascii;
+        end
+
+        if (window_build_active && (window_build_phase == 2'd1)) begin
+            window_read_data <= text_mem[window_read_addr];
+        end
+    end
 
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
@@ -84,7 +129,6 @@ module message_store(
             selected_unread <= 1'b0;
             selected_timestamp_ascii <= {19{8'h20}};
             selected_len <= 7'd0;
-            selected_window_ascii <= {64{8'h20}};
             selected_slot_d <= 4'd0;
             window_base_d <= 7'd0;
             selected_phys_reg <= 4'd0;
@@ -92,12 +136,18 @@ module message_store(
             selected_valid_reg <= 1'b0;
             window_build_active <= 1'b0;
             window_build_index <= 6'd0;
+            window_build_phase <= 2'd0;
+            window_read_addr <= 11'd0;
+            window_read_in_range <= 1'b0;
 
             for (slot_idx = 0; slot_idx < 16; slot_idx = slot_idx + 1) begin
                 valid_mem[slot_idx] <= 1'b0;
                 unread_mem[slot_idx] <= 1'b0;
                 len_mem[slot_idx] <= 7'd0;
                 timestamp_mem[slot_idx] <= {19{8'h20}};
+            end
+            for (window_idx = 0; window_idx < 64; window_idx = window_idx + 1) begin
+                selected_window_mem[window_idx] <= 8'h20;
             end
         end else begin
             if (clear_all) begin
@@ -107,12 +157,17 @@ module message_store(
                 selected_unread <= 1'b0;
                 selected_timestamp_ascii <= {19{8'h20}};
                 selected_len <= 7'd0;
-                selected_window_ascii <= {64{8'h20}};
                 window_build_active <= 1'b0;
+                window_build_phase <= 2'd0;
+                window_read_addr <= 11'd0;
+                window_read_in_range <= 1'b0;
                 for (slot_idx = 0; slot_idx < 16; slot_idx = slot_idx + 1) begin
                     valid_mem[slot_idx] <= 1'b0;
                     unread_mem[slot_idx] <= 1'b0;
                     len_mem[slot_idx] <= 7'd0;
+                end
+                for (window_idx = 0; window_idx < 64; window_idx = window_idx + 1) begin
+                    selected_window_mem[window_idx] <= 8'h20;
                 end
             end else begin
                 if (store_begin) begin
@@ -140,21 +195,24 @@ module message_store(
                         selected_valid_reg <= 1'b1;
                         selected_len_reg <= store_len;
                         selected_phys_reg <= next_head_slot;
-                        selected_window_ascii <= {64{8'h20}};
                         window_build_active <= 1'b0;
+                        window_build_phase <= 2'd0;
+                        window_read_in_range <= 1'b0;
+                        for (window_idx = 0; window_idx < 64; window_idx = window_idx + 1) begin
+                            selected_window_mem[window_idx] <= 8'h20;
+                        end
                     end else begin
                         selected_slot_d <= selected_slot + 1'b1;
                         window_base_d <= window_base_index;
                         window_build_active <= 1'b0;
+                        window_build_phase <= 2'd0;
+                        window_read_in_range <= 1'b0;
                     end
                 end
 
-                if (store_char_valid && (store_char_index < 7'd100)) begin
-                    text_mem[text_addr(write_slot, store_char_index)] <= store_char_ascii;
-                    if ((selected_slot == 4'd0) &&
-                        (store_char_index >= window_base_index) &&
-                        (store_char_index < window_base_index + 7'd64)) begin
-                        selected_window_ascii[(store_char_index - window_base_index) * 8 +: 8] <= store_char_ascii;
+                if (text_store_valid) begin
+                    if ((selected_slot == 4'd0) && store_char_in_window) begin
+                        selected_window_mem[store_window_offset[5:0]] <= store_char_ascii;
                     end
                 end
 
@@ -170,19 +228,34 @@ module message_store(
                 if ((selected_slot != selected_slot_d) || (window_base_index != window_base_d)) begin
                     start_window_rebuild;
                 end else if (window_build_active) begin
-                    if (selected_valid_reg &&
-                        (window_base_d + {1'b0, window_build_index} < selected_len_reg)) begin
-                        selected_window_ascii[window_build_index * 8 +: 8] <=
-                            text_mem[text_addr(selected_phys_reg, window_base_d + {1'b0, window_build_index})];
-                    end else begin
-                        selected_window_ascii[window_build_index * 8 +: 8] <= 8'h20;
-                    end
+                    case (window_build_phase)
+                        2'd0: begin
+                            if (selected_valid_reg &&
+                                (window_build_abs_index < {1'b0, selected_len_reg}) &&
+                                (window_build_abs_index < 8'd100)) begin
+                                window_read_addr <= text_addr(selected_phys_reg, window_build_abs_index[6:0]);
+                                window_read_in_range <= 1'b1;
+                            end else begin
+                                window_read_addr <= 11'd0;
+                                window_read_in_range <= 1'b0;
+                            end
+                            window_build_phase <= 2'd1;
+                        end
 
-                    if (window_build_index == 6'd63) begin
-                        window_build_active <= 1'b0;
-                    end else begin
-                        window_build_index <= window_build_index + 1'b1;
-                    end
+                        2'd1: begin
+                            window_build_phase <= 2'd2;
+                        end
+
+                        default: begin
+                            selected_window_mem[window_build_index] <= window_read_in_range ? window_read_data : 8'h20;
+                            window_build_phase <= 2'd0;
+                            if (window_build_index == 6'd63) begin
+                                window_build_active <= 1'b0;
+                            end else begin
+                                window_build_index <= window_build_index + 1'b1;
+                            end
+                        end
+                    endcase
                 end
 
                 if (!store_begin && ((selected_slot != selected_slot_d) || (window_base_index != window_base_d))) begin

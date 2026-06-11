@@ -264,6 +264,7 @@ module clock(
     wire date_weekday_dec_pulse;
     wire time_auto_tick_en;
     wire day_tick_pulse;
+    wire hourly_chime_pulse;
     wire hour_format_toggle_pulse;
     wire hour_format_12h;
     wire time_is_pm;
@@ -378,6 +379,9 @@ module clock(
                                           ~time_min_inc_pulse & ~time_min_dec_pulse;
     assign day_tick_pulse              = time_auto_tick_en &
                                           (hour_t_time == 4'd2) & (hour_u_time == 4'd3) &
+                                          (min_t_time == 4'd5) & (min_u_time == 4'd9) &
+                                          (sec_t_time == 4'd5) & (sec_u_time == 4'd9);
+    assign hourly_chime_pulse          = time_auto_tick_en &
                                           (min_t_time == 4'd5) & (min_u_time == 4'd9) &
                                           (sec_t_time == 4'd5) & (sec_u_time == 4'd9);
     assign digit_code_bus              = {mode_disp_code, status_disp_code,
@@ -826,6 +830,7 @@ module clock(
         .btn_up_pulse(btn_up_pulse_raw),
         .btn_down_pulse(btn_down_pulse_raw),
         .btn_center_pulse(btn_center_pulse_raw),
+        .hourly_chime_pulse(hourly_chime_pulse),
         .countdown_done_pulse(countdown_done_pulse),
         .alarm_event_valid(alarm_event_valid),
         .alarm_event_slot(alarm_event_slot),
@@ -843,6 +848,8 @@ module clock(
     );
 
     display_ctrl u_display_ctrl(
+        .clk(clk),
+        .rst(rst),
         .mode_state(mode_state),
         .setting_active(setting_active),
         .blink_hide(blink_hide),

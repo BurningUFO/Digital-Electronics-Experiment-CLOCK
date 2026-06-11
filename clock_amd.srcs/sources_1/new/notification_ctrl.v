@@ -8,12 +8,13 @@ module notification_ctrl(
     input  btn_up_pulse,
     input  btn_down_pulse,
     input  btn_center_pulse,
+    input  hourly_chime_pulse,
     input  countdown_done_pulse,
     input  alarm_event_valid,
     input  [2:0] alarm_event_slot,
     input  schedule_event_valid,
     input  [2:0] schedule_event_slot,
-    output reg buzzer_out,
+    output buzzer_out,
     output notify_active,
     output [1:0] notify_type,
     output [2:0] notify_slot,
@@ -38,12 +39,19 @@ module notification_ctrl(
     localparam [10:0] ALARM_ON_MS         = 11'd400;
     localparam [10:0] SCHEDULE_PERIOD_MS  = 11'd2000;
     localparam [10:0] SCHEDULE_ON_MS      = 11'd250;
+    localparam [8:0] HOURLY_ON_MS         = 9'd100;
+    localparam [8:0] HOURLY_OFF_MS        = 9'd100;
+    localparam [8:0] HOURLY_SECOND_ON_MS  = HOURLY_ON_MS + HOURLY_OFF_MS;
+    localparam [8:0] HOURLY_TOTAL_MS      = HOURLY_SECOND_ON_MS + HOURLY_ON_MS;
 
     reg countdown_pending_reg;
     reg [1:0] notify_type_reg;
     reg [2:0] notify_slot_reg;
     reg [5:0] ring_sec_cnt;
     reg [10:0] beep_ms_cnt;
+    reg reminder_buzzer_reg;
+    reg hourly_chime_active_reg;
+    reg [8:0] hourly_chime_ms_cnt;
 
     wire [1:0] selected_type;
     wire [2:0] selected_slot;
@@ -53,6 +61,7 @@ module notification_ctrl(
     wire snooze_current;
     wire dismiss_current;
     wire countdown_pending_next;
+    wire hourly_chime_buzzer;
 
     function [1:0] highest_type;
         input countdown_pending;
@@ -154,6 +163,12 @@ module notification_ctrl(
     assign notify_active = (notify_type_reg != TYPE_NONE);
     assign notify_type = notify_type_reg;
     assign notify_slot = notify_slot_reg;
+    assign hourly_chime_buzzer =
+        hourly_chime_active_reg &&
+        ((hourly_chime_ms_cnt < HOURLY_ON_MS) ||
+         ((hourly_chime_ms_cnt >= HOURLY_SECOND_ON_MS) &&
+          (hourly_chime_ms_cnt < (HOURLY_SECOND_ON_MS + HOURLY_ON_MS))));
+    assign buzzer_out = selected_active ? reminder_buzzer_reg : hourly_chime_buzzer;
 
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
@@ -162,7 +177,9 @@ module notification_ctrl(
             notify_slot_reg <= 3'd0;
             ring_sec_cnt <= 6'd0;
             beep_ms_cnt <= 11'd0;
-            buzzer_out <= 1'b0;
+            reminder_buzzer_reg <= 1'b0;
+            hourly_chime_active_reg <= 1'b0;
+            hourly_chime_ms_cnt <= 9'd0;
             alarm_event_ack_pulse <= 1'b0;
             alarm_snooze_set_pulse <= 1'b0;
             alarm_snooze_add_min <= 4'd0;
@@ -207,19 +224,34 @@ module notification_ctrl(
                 ring_sec_cnt <= ring_sec_cnt + 1'b1;
             end
 
+            if (selected_active) begin
+                hourly_chime_active_reg <= 1'b0;
+                hourly_chime_ms_cnt <= 9'd0;
+            end else if (hourly_chime_pulse) begin
+                hourly_chime_active_reg <= 1'b1;
+                hourly_chime_ms_cnt <= 9'd0;
+            end else if (tick_1k && hourly_chime_active_reg) begin
+                if (hourly_chime_ms_cnt == (HOURLY_TOTAL_MS - 1'b1)) begin
+                    hourly_chime_active_reg <= 1'b0;
+                    hourly_chime_ms_cnt <= 9'd0;
+                end else begin
+                    hourly_chime_ms_cnt <= hourly_chime_ms_cnt + 1'b1;
+                end
+            end
+
             if (!selected_active || dismiss_current) begin
                 beep_ms_cnt <= 11'd0;
-                buzzer_out <= 1'b0;
+                reminder_buzzer_reg <= 1'b0;
             end else if (event_changed) begin
                 beep_ms_cnt <= 11'd0;
-                buzzer_out <= 1'b1;
+                reminder_buzzer_reg <= 1'b1;
             end else if (tick_1k) begin
                 if (beep_ms_cnt == (beep_period_ms(selected_type) - 1'b1)) begin
                     beep_ms_cnt <= 11'd0;
-                    buzzer_out <= 1'b1;
+                    reminder_buzzer_reg <= 1'b1;
                 end else begin
                     beep_ms_cnt <= beep_ms_cnt + 1'b1;
-                    buzzer_out <= (beep_ms_cnt < (beep_on_ms(selected_type) - 1'b1));
+                    reminder_buzzer_reg <= (beep_ms_cnt < (beep_on_ms(selected_type) - 1'b1));
                 end
             end
         end

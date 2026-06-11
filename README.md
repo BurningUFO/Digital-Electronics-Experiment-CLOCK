@@ -23,9 +23,11 @@
 7. `COUNT` 支持 `HH:MM:SS` 编辑、启动、停止和到零提醒。
 8. `SCHED` 支持 8 个固定计划点、槽位开关、LED 指示和计划提醒。
 9. `notification_ctrl` 统一仲裁倒计时、闹钟和计划提醒，并作为蜂鸣器唯一驱动源。
-10. OLED 为状态副屏基础版，显示日期、温度、最近计划、最近闹钟、倒计时状态和提醒弹窗；旧三模式滑动动画已移除。
-11. ADT7420 温度读取模块已接入顶层 `TMP_SCL / TMP_SDA`，板级温度读数尚未实测。
-12. ClockLink Studio USB-UART 通信扩展已完成协议库、mock PC 软件、COMM 模式、UART、消息缓存、预设回复、时间同步、闹钟/日程/倒计时直接控制的首版集成。
+10. 整点报时已接入蜂鸣器链路，在正常走时进入 `HH:00:00` 时输出两段短蜂鸣；不占用 OLED 提醒弹窗。
+11. OLED 为状态副屏基础版，显示日期、温度、最近计划、最近闹钟、倒计时状态和提醒弹窗；旧三模式滑动动画已移除。
+12. OLED 字库已覆盖完整可打印 ASCII `0x20..0x7E`，COMM 消息小写字母和常见标点可独立显示；Unicode/中文仍不属于当前 UART 协议和 FPGA 字库范围。
+13. ADT7420 温度读取模块已接入顶层 `TMP_SCL / TMP_SDA`，板级温度读数尚未实测。
+14. ClockLink Studio USB-UART 通信扩展已完成协议库、mock PC 软件、COMM 模式、UART、消息缓存、预设回复、时间同步、闹钟/日程/倒计时直接控制的首版集成。
 
 ## 当前交互规则
 
@@ -58,10 +60,11 @@
 2. `xelab clock_amd_top` 顶层展开通过。
 3. `xvlog` 全源语法检查通过。
 4. Phase 8 通信回归通过：`tb_comm_ctrl_control/time/msg/reply` 均输出 `PASS`。
-5. PC 软件 `python -m pytest` 通过，15 个测试全部通过。
-6. 最新 `vivado -mode batch -source scripts/run_phase_synth_check.tcl` 综合检查通过，时序：`WNS=+1.232ns`，`TNS=0.000ns`，失败端点 `0`。
-7. 尚未生成 bitstream。
-8. 尚未进行 Nexys A7 100T 板级 USB-UART/COMM 实测。
+5. `tb_notification_hourly_chime` 和 `tb_oled_glyph` 针对整点报时与 OLED ASCII 字库通过聚焦仿真。
+6. PC 软件 `python -m pytest` 最近记录通过，17 个测试全部通过。
+7. 最新 `vivado -mode batch -source scripts/run_phase_synth_check.tcl` 综合检查通过，时序：`WNS=+1.779ns`，`TNS=0.000ns`，失败端点 `0`。
+8. 尚未生成 bitstream。
+9. 尚未进行 Nexys A7 100T 板级 USB-UART/COMM 实测。
 
 ## 目录约定
 

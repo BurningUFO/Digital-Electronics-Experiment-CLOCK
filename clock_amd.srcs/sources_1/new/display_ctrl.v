@@ -1,4 +1,6 @@
 module display_ctrl(
+    input  clk,
+    input  rst,
     input  [2:0] mode_state,
     input  setting_active,
     input  blink_hide,
@@ -56,14 +58,14 @@ module display_ctrl(
     input  [3:0] countdown_min_unit_bcd,
     input  [3:0] countdown_sec_ten_bcd,
     input  [3:0] countdown_sec_unit_bcd,
-    output [5:0] mode_disp_code,
-    output [5:0] status_disp_code,
-    output [5:0] sec_unit_disp_bcd,
-    output [5:0] sec_ten_disp_bcd,
-    output [5:0] min_unit_disp_bcd,
-    output [5:0] min_ten_disp_bcd,
-    output [5:0] hour_unit_disp_bcd,
-    output [5:0] hour_ten_disp_bcd
+    output reg [5:0] mode_disp_code,
+    output reg [5:0] status_disp_code,
+    output reg [5:0] sec_unit_disp_bcd,
+    output reg [5:0] sec_ten_disp_bcd,
+    output reg [5:0] min_unit_disp_bcd,
+    output reg [5:0] min_ten_disp_bcd,
+    output reg [5:0] hour_unit_disp_bcd,
+    output reg [5:0] hour_ten_disp_bcd
 );
     localparam [5:0] DISP_2     = 6'd2;
     localparam [5:0] DISP_1     = 6'd1;
@@ -99,23 +101,14 @@ module display_ctrl(
     localparam MODE_SCHEDULE    = 3'b101;
     localparam MODE_COMM        = 3'b110;
 
-    reg [5:0] mode_reg;
-    reg [5:0] status_reg;
-    reg [5:0] sec_unit_reg;
-    reg [5:0] sec_ten_reg;
-    reg [5:0] min_unit_reg;
-    reg [5:0] min_ten_reg;
-    reg [5:0] hour_unit_reg;
-    reg [5:0] hour_ten_reg;
-
-    assign mode_disp_code      = mode_reg;
-    assign status_disp_code    = status_reg;
-    assign sec_unit_disp_bcd  = sec_unit_reg;
-    assign sec_ten_disp_bcd   = sec_ten_reg;
-    assign min_unit_disp_bcd  = min_unit_reg;
-    assign min_ten_disp_bcd   = min_ten_reg;
-    assign hour_unit_disp_bcd = hour_unit_reg;
-    assign hour_ten_disp_bcd  = hour_ten_reg;
+    reg [5:0] mode_next;
+    reg [5:0] status_next;
+    reg [5:0] sec_unit_next;
+    reg [5:0] sec_ten_next;
+    reg [5:0] min_unit_next;
+    reg [5:0] min_ten_next;
+    reg [5:0] hour_unit_next;
+    reg [5:0] hour_ten_next;
 
     function [5:0] slot_digit;
         input [2:0] slot;
@@ -266,131 +259,131 @@ module display_ctrl(
     endfunction
 
     always @(*) begin
-        mode_reg      = DISP_N;
-        status_reg    = DISP_BLANK;
-        sec_unit_reg  = {2'b00, sec_unit_time_bcd};
-        sec_ten_reg   = {2'b00, sec_ten_time_bcd};
-        min_unit_reg  = {2'b00, min_unit_time_bcd};
-        min_ten_reg   = {2'b00, min_ten_time_bcd};
-        hour_unit_reg = {2'b00, disp_hour_unit_time_bcd};
-        hour_ten_reg  = {2'b00, disp_hour_ten_time_bcd};
+        mode_next      = DISP_N;
+        status_next    = DISP_BLANK;
+        sec_unit_next  = {2'b00, sec_unit_time_bcd};
+        sec_ten_next   = {2'b00, sec_ten_time_bcd};
+        min_unit_next  = {2'b00, min_unit_time_bcd};
+        min_ten_next   = {2'b00, min_ten_time_bcd};
+        hour_unit_next = {2'b00, disp_hour_unit_time_bcd};
+        hour_ten_next  = {2'b00, disp_hour_ten_time_bcd};
 
         case (mode_state)
             MODE_NORMAL: begin
-                mode_reg   = DISP_N;
-                status_reg = setting_active ? DISP_D : DISP_BLANK;
+                mode_next   = DISP_N;
+                status_next = setting_active ? DISP_D : DISP_BLANK;
 
                 if (setting_active) begin
-                    hour_ten_reg  = {2'b00, date_month_ten_bcd};
-                    hour_unit_reg = {2'b00, date_month_unit_bcd};
-                    min_ten_reg   = {2'b00, date_day_ten_bcd};
-                    min_unit_reg  = {2'b00, date_day_unit_bcd};
-                    sec_ten_reg   = DISP_0;
-                    sec_unit_reg  = {3'b000, date_weekday};
+                    hour_ten_next  = {2'b00, date_month_ten_bcd};
+                    hour_unit_next = {2'b00, date_month_unit_bcd};
+                    min_ten_next   = {2'b00, date_day_ten_bcd};
+                    min_unit_next  = {2'b00, date_day_unit_bcd};
+                    sec_ten_next   = DISP_0;
+                    sec_unit_next  = {3'b000, date_weekday};
                 end
             end
 
             MODE_TIME_SET: begin
-                mode_reg   = DISP_T;
-                status_reg = DISP_BLANK;
+                mode_next   = DISP_T;
+                status_next = DISP_BLANK;
 
                 if (setting_active) begin
-                    hour_unit_reg = {2'b00, hour_unit_time_bcd};
-                    hour_ten_reg  = {2'b00, hour_ten_time_bcd};
+                    hour_unit_next = {2'b00, hour_unit_time_bcd};
+                    hour_ten_next  = {2'b00, hour_ten_time_bcd};
                 end
             end
 
             MODE_ALARM: begin
-                mode_reg      = DISP_A;
+                mode_next      = DISP_A;
                 if (setting_active) begin
-                    status_reg    = (selected_alarm_enable == 1'b1) ? DISP_O : DISP_F;
-                    sec_unit_reg  = {2'b00, alarm_sec_unit_bcd};
-                    sec_ten_reg   = {2'b00, alarm_sec_ten_bcd};
-                    min_unit_reg  = {2'b00, alarm_min_unit_bcd};
-                    min_ten_reg   = {2'b00, alarm_min_ten_bcd};
-                    hour_unit_reg = {2'b00, alarm_hour_unit_bcd};
-                    hour_ten_reg  = {2'b00, alarm_hour_ten_bcd};
+                    status_next    = (selected_alarm_enable == 1'b1) ? DISP_O : DISP_F;
+                    sec_unit_next  = {2'b00, alarm_sec_unit_bcd};
+                    sec_ten_next   = {2'b00, alarm_sec_ten_bcd};
+                    min_unit_next  = {2'b00, alarm_min_unit_bcd};
+                    min_ten_next   = {2'b00, alarm_min_ten_bcd};
+                    hour_unit_next = {2'b00, alarm_hour_unit_bcd};
+                    hour_ten_next  = {2'b00, alarm_hour_ten_bcd};
                 end else if (next_alarm_valid) begin
-                    status_reg    = DISP_O;
-                    sec_unit_reg  = {2'b00, next_alarm_sec_unit_bcd};
-                    sec_ten_reg   = {2'b00, next_alarm_sec_ten_bcd};
-                    min_unit_reg  = {2'b00, next_alarm_min_unit_bcd};
-                    min_ten_reg   = {2'b00, next_alarm_min_ten_bcd};
-                    hour_unit_reg = {2'b00, next_alarm_hour_unit_bcd};
-                    hour_ten_reg  = {2'b00, next_alarm_hour_ten_bcd};
+                    status_next    = DISP_O;
+                    sec_unit_next  = {2'b00, next_alarm_sec_unit_bcd};
+                    sec_ten_next   = {2'b00, next_alarm_sec_ten_bcd};
+                    min_unit_next  = {2'b00, next_alarm_min_unit_bcd};
+                    min_ten_next   = {2'b00, next_alarm_min_ten_bcd};
+                    hour_unit_next = {2'b00, next_alarm_hour_unit_bcd};
+                    hour_ten_next  = {2'b00, next_alarm_hour_ten_bcd};
                 end else begin
-                    status_reg    = DISP_F;
-                    sec_unit_reg  = DISP_0;
-                    sec_ten_reg   = DISP_0;
-                    min_unit_reg  = DISP_0;
-                    min_ten_reg   = DISP_0;
-                    hour_unit_reg = DISP_0;
-                    hour_ten_reg  = DISP_0;
+                    status_next    = DISP_F;
+                    sec_unit_next  = DISP_0;
+                    sec_ten_next   = DISP_0;
+                    min_unit_next  = DISP_0;
+                    min_ten_next   = DISP_0;
+                    hour_unit_next = DISP_0;
+                    hour_ten_next  = DISP_0;
                 end
             end
 
             MODE_HOUR_FORMAT: begin
-                mode_reg   = DISP_H;
-                status_reg = hour_format_12h ? DISP_1 : DISP_2;
+                mode_next   = DISP_H;
+                status_next = hour_format_12h ? DISP_1 : DISP_2;
             end
 
             MODE_COUNTDOWN: begin
-                mode_reg      = DISP_C;
-                status_reg    = (countdown_run == 1'b1) ? DISP_R : DISP_P;
-                sec_unit_reg  = {2'b00, countdown_sec_unit_bcd};
-                sec_ten_reg   = {2'b00, countdown_sec_ten_bcd};
-                min_unit_reg  = {2'b00, countdown_min_unit_bcd};
-                min_ten_reg   = {2'b00, countdown_min_ten_bcd};
-                hour_unit_reg = {2'b00, countdown_hour_unit_bcd};
-                hour_ten_reg  = {2'b00, countdown_hour_ten_bcd};
+                mode_next      = DISP_C;
+                status_next    = (countdown_run == 1'b1) ? DISP_R : DISP_P;
+                sec_unit_next  = {2'b00, countdown_sec_unit_bcd};
+                sec_ten_next   = {2'b00, countdown_sec_ten_bcd};
+                min_unit_next  = {2'b00, countdown_min_unit_bcd};
+                min_ten_next   = {2'b00, countdown_min_ten_bcd};
+                hour_unit_next = {2'b00, countdown_hour_unit_bcd};
+                hour_ten_next  = {2'b00, countdown_hour_ten_bcd};
             end
 
             MODE_SCHEDULE: begin
-                mode_reg   = DISP_S;
-                status_reg = setting_active ? slot_digit(schedule_selected_slot) :
+                mode_next   = DISP_S;
+                status_next = setting_active ? slot_digit(schedule_selected_slot) :
                              next_schedule_valid ? slot_digit(next_schedule_slot) :
                              slot_digit(schedule_selected_slot);
 
                 if (setting_active && schedule_type_page) begin
-                    hour_ten_reg  = schedule_type_char(selected_schedule_type, 3'd0);
-                    hour_unit_reg = schedule_type_char(selected_schedule_type, 3'd1);
-                    min_ten_reg   = schedule_type_char(selected_schedule_type, 3'd2);
-                    min_unit_reg  = schedule_type_char(selected_schedule_type, 3'd3);
-                    sec_ten_reg   = schedule_type_char(selected_schedule_type, 3'd4);
-                    sec_unit_reg  = schedule_type_char(selected_schedule_type, 3'd5);
+                    hour_ten_next  = schedule_type_char(selected_schedule_type, 3'd0);
+                    hour_unit_next = schedule_type_char(selected_schedule_type, 3'd1);
+                    min_ten_next   = schedule_type_char(selected_schedule_type, 3'd2);
+                    min_unit_next  = schedule_type_char(selected_schedule_type, 3'd3);
+                    sec_ten_next   = schedule_type_char(selected_schedule_type, 3'd4);
+                    sec_unit_next  = schedule_type_char(selected_schedule_type, 3'd5);
                 end else if (setting_active) begin
-                    sec_unit_reg  = {2'b00, schedule_sec_unit_bcd};
-                    sec_ten_reg   = {2'b00, schedule_sec_ten_bcd};
-                    min_unit_reg  = {2'b00, schedule_min_unit_bcd};
-                    min_ten_reg   = {2'b00, schedule_min_ten_bcd};
-                    hour_unit_reg = {2'b00, schedule_hour_unit_bcd};
-                    hour_ten_reg  = {2'b00, schedule_hour_ten_bcd};
+                    sec_unit_next  = {2'b00, schedule_sec_unit_bcd};
+                    sec_ten_next   = {2'b00, schedule_sec_ten_bcd};
+                    min_unit_next  = {2'b00, schedule_min_unit_bcd};
+                    min_ten_next   = {2'b00, schedule_min_ten_bcd};
+                    hour_unit_next = {2'b00, schedule_hour_unit_bcd};
+                    hour_ten_next  = {2'b00, schedule_hour_ten_bcd};
                 end else if (next_schedule_valid) begin
-                    sec_unit_reg  = {2'b00, next_schedule_sec_unit_bcd};
-                    sec_ten_reg   = {2'b00, next_schedule_sec_ten_bcd};
-                    min_unit_reg  = {2'b00, next_schedule_min_unit_bcd};
-                    min_ten_reg   = {2'b00, next_schedule_min_ten_bcd};
-                    hour_unit_reg = {2'b00, next_schedule_hour_unit_bcd};
-                    hour_ten_reg  = {2'b00, next_schedule_hour_ten_bcd};
+                    sec_unit_next  = {2'b00, next_schedule_sec_unit_bcd};
+                    sec_ten_next   = {2'b00, next_schedule_sec_ten_bcd};
+                    min_unit_next  = {2'b00, next_schedule_min_unit_bcd};
+                    min_ten_next   = {2'b00, next_schedule_min_ten_bcd};
+                    hour_unit_next = {2'b00, next_schedule_hour_unit_bcd};
+                    hour_ten_next  = {2'b00, next_schedule_hour_ten_bcd};
                 end else begin
-                    sec_unit_reg  = DISP_0;
-                    sec_ten_reg   = DISP_0;
-                    min_unit_reg  = DISP_0;
-                    min_ten_reg   = DISP_0;
-                    hour_unit_reg = DISP_0;
-                    hour_ten_reg  = DISP_0;
+                    sec_unit_next  = DISP_0;
+                    sec_ten_next   = DISP_0;
+                    min_unit_next  = DISP_0;
+                    min_ten_next   = DISP_0;
+                    hour_unit_next = DISP_0;
+                    hour_ten_next  = DISP_0;
                 end
             end
 
             MODE_COMM: begin
-                mode_reg      = DISP_C;
-                status_reg    = DISP_O;
-                hour_ten_reg  = DISP_M;
-                hour_unit_reg = DISP_M;
-                min_ten_reg   = comm_status_char(comm_status, 2'd0);
-                min_unit_reg  = comm_status_char(comm_status, 2'd1);
-                sec_ten_reg   = comm_status_char(comm_status, 2'd2);
-                sec_unit_reg  = comm_status_char(comm_status, 2'd3);
+                mode_next      = DISP_C;
+                status_next    = DISP_O;
+                hour_ten_next  = DISP_M;
+                hour_unit_next = DISP_M;
+                min_ten_next   = comm_status_char(comm_status, 2'd0);
+                min_unit_next  = comm_status_char(comm_status, 2'd1);
+                sec_ten_next   = comm_status_char(comm_status, 2'd2);
+                sec_unit_next  = comm_status_char(comm_status, 2'd3);
             end
 
             default: begin
@@ -401,46 +394,46 @@ module display_ctrl(
             case (mode_state)
                 MODE_NORMAL: begin
                     if (field_index == 3'd0) begin
-                        hour_unit_reg = DISP_BLANK;
-                        hour_ten_reg  = DISP_BLANK;
+                        hour_unit_next = DISP_BLANK;
+                        hour_ten_next  = DISP_BLANK;
                     end else if (field_index == 3'd1) begin
-                        min_unit_reg = DISP_BLANK;
-                        min_ten_reg  = DISP_BLANK;
+                        min_unit_next = DISP_BLANK;
+                        min_ten_next  = DISP_BLANK;
                     end else begin
-                        sec_unit_reg = DISP_BLANK;
-                        sec_ten_reg  = DISP_BLANK;
+                        sec_unit_next = DISP_BLANK;
+                        sec_ten_next  = DISP_BLANK;
                     end
                 end
 
                 MODE_TIME_SET: begin
                     if (field_index == 3'd0) begin
-                        hour_unit_reg = DISP_BLANK;
-                        hour_ten_reg  = DISP_BLANK;
+                        hour_unit_next = DISP_BLANK;
+                        hour_ten_next  = DISP_BLANK;
                     end else if (field_index == 3'd1) begin
-                        min_unit_reg = DISP_BLANK;
-                        min_ten_reg  = DISP_BLANK;
+                        min_unit_next = DISP_BLANK;
+                        min_ten_next  = DISP_BLANK;
                     end else begin
-                        sec_unit_reg = DISP_BLANK;
-                        sec_ten_reg  = DISP_BLANK;
+                        sec_unit_next = DISP_BLANK;
+                        sec_ten_next  = DISP_BLANK;
                     end
                 end
 
                 MODE_ALARM: begin
                     case (field_index)
                         3'd1: begin
-                            hour_unit_reg = DISP_BLANK;
-                            hour_ten_reg  = DISP_BLANK;
+                            hour_unit_next = DISP_BLANK;
+                            hour_ten_next  = DISP_BLANK;
                         end
                         3'd2: begin
-                            min_unit_reg = DISP_BLANK;
-                            min_ten_reg  = DISP_BLANK;
+                            min_unit_next = DISP_BLANK;
+                            min_ten_next  = DISP_BLANK;
                         end
                         3'd3: begin
-                            sec_unit_reg = DISP_BLANK;
-                            sec_ten_reg  = DISP_BLANK;
+                            sec_unit_next = DISP_BLANK;
+                            sec_ten_next  = DISP_BLANK;
                         end
                         3'd4: begin
-                            status_reg = DISP_BLANK;
+                            status_next = DISP_BLANK;
                         end
                         default: begin
                         end
@@ -448,22 +441,22 @@ module display_ctrl(
                 end
 
                 MODE_HOUR_FORMAT: begin
-                    status_reg = DISP_BLANK;
+                    status_next = DISP_BLANK;
                 end
 
                 MODE_COUNTDOWN: begin
                     case (field_index)
                         3'd0: begin
-                            hour_unit_reg = DISP_BLANK;
-                            hour_ten_reg  = DISP_BLANK;
+                            hour_unit_next = DISP_BLANK;
+                            hour_ten_next  = DISP_BLANK;
                         end
                         3'd1: begin
-                            min_unit_reg = DISP_BLANK;
-                            min_ten_reg  = DISP_BLANK;
+                            min_unit_next = DISP_BLANK;
+                            min_ten_next  = DISP_BLANK;
                         end
                         3'd2: begin
-                            sec_ten_reg  = DISP_BLANK;
-                            sec_unit_reg = DISP_BLANK;
+                            sec_ten_next  = DISP_BLANK;
+                            sec_unit_next = DISP_BLANK;
                         end
                         default: begin
                         end
@@ -472,25 +465,25 @@ module display_ctrl(
 
                 MODE_SCHEDULE: begin
                     if (schedule_type_page) begin
-                        hour_unit_reg = DISP_BLANK;
-                        hour_ten_reg  = DISP_BLANK;
-                        min_unit_reg  = DISP_BLANK;
-                        min_ten_reg   = DISP_BLANK;
-                        sec_unit_reg  = DISP_BLANK;
-                        sec_ten_reg   = DISP_BLANK;
+                        hour_unit_next = DISP_BLANK;
+                        hour_ten_next  = DISP_BLANK;
+                        min_unit_next  = DISP_BLANK;
+                        min_ten_next   = DISP_BLANK;
+                        sec_unit_next  = DISP_BLANK;
+                        sec_ten_next   = DISP_BLANK;
                     end else begin
                         case (field_index)
                         3'd0: begin
-                            hour_unit_reg = DISP_BLANK;
-                            hour_ten_reg  = DISP_BLANK;
+                            hour_unit_next = DISP_BLANK;
+                            hour_ten_next  = DISP_BLANK;
                         end
                         3'd1: begin
-                            min_unit_reg = DISP_BLANK;
-                            min_ten_reg  = DISP_BLANK;
+                            min_unit_next = DISP_BLANK;
+                            min_ten_next  = DISP_BLANK;
                         end
                         3'd2: begin
-                            sec_unit_reg = DISP_BLANK;
-                            sec_ten_reg  = DISP_BLANK;
+                            sec_unit_next = DISP_BLANK;
+                            sec_ten_next  = DISP_BLANK;
                         end
                         default: begin
                         end
@@ -501,6 +494,28 @@ module display_ctrl(
                 default: begin
                 end
             endcase
+        end
+    end
+
+    always @(posedge clk or negedge rst) begin
+        if (!rst) begin
+            mode_disp_code      <= DISP_N;
+            status_disp_code    <= DISP_BLANK;
+            sec_unit_disp_bcd   <= DISP_0;
+            sec_ten_disp_bcd    <= DISP_0;
+            min_unit_disp_bcd   <= DISP_0;
+            min_ten_disp_bcd    <= DISP_0;
+            hour_unit_disp_bcd  <= DISP_0;
+            hour_ten_disp_bcd   <= DISP_0;
+        end else begin
+            mode_disp_code      <= mode_next;
+            status_disp_code    <= status_next;
+            sec_unit_disp_bcd   <= sec_unit_next;
+            sec_ten_disp_bcd    <= sec_ten_next;
+            min_unit_disp_bcd   <= min_unit_next;
+            min_ten_disp_bcd    <= min_ten_next;
+            hour_unit_disp_bcd  <= hour_unit_next;
+            hour_ten_disp_bcd   <= hour_ten_next;
         end
     end
 endmodule

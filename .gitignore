@@ -11,6 +11,7 @@ vivado*.jou
 vivado*.log
 vivado_*.backup.jou
 vivado_*.backup.log
+vivado_pid*.str
 xelab.log
 xelab.pb
 xsim*.jou
@@ -18,6 +19,7 @@ xsim*.log
 xvlog.log
 xvlog.pb
 dfx_runtime.txt
+clockInfo.txt
 hs_err_pid*.dmp
 hs_err_pid*.log
 .pytest_cache/

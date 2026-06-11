@@ -91,6 +91,7 @@ module oled_ui_display (
     reg [2:0]  page_data_page = 3'd0;
     reg [7:0]  page_data_col = 8'd0;
     reg        page_data_edit = 1'b0;
+    reg [19:0] page_data_info = {8'h00, 1'b0, 8'h20, 3'd0};
     reg [7:0]  page_data_byte = 8'd0;
     reg        waiting_done = 1'b0;
     reg [1:0]  ll_cmd_type = CMD_START;
@@ -140,7 +141,6 @@ module oled_ui_display (
     reg [95:0]  render_comm_date_line_ascii = {12{8'h20}};
     reg [95:0]  render_comm_time_line_ascii = {12{8'h20}};
     reg [6:0]   render_comm_message_len = 7'd0;
-    reg [511:0] render_comm_message_window_ascii = {64{8'h20}};
     reg [127:0] render_comm_msg_line0_ascii = {16{8'h20}};
     reg [127:0] render_comm_msg_line1_ascii = {16{8'h20}};
     reg [127:0] render_comm_msg_line2_ascii = {16{8'h20}};
@@ -392,428 +392,115 @@ module oled_ui_display (
     function [7:0] glyph_row;
         input [7:0] ch;
         input [2:0] row;
+        reg [55:0] rows;
         begin
             case (ch)
-                "A": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00011000;
-                        3'd1: glyph_row = 8'b00100100;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01111110;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "C": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01000000;
-                        3'd4: glyph_row = 8'b01000000;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "D": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111000;
-                        3'd1: glyph_row = 8'b01000100;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01000010;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000100;
-                        3'd6: glyph_row = 8'b01111000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "E": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111110;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b01000000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b01111110;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "F": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111110;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b01000000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b01000000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "G": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01001110;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "H": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01111110;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "I": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b00011000;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00011000;
-                        3'd4: glyph_row = 8'b00011000;
-                        3'd5: glyph_row = 8'b00011000;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "K": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01000100;
-                        3'd2: glyph_row = 8'b01001000;
-                        3'd3: glyph_row = 8'b01110000;
-                        3'd4: glyph_row = 8'b01001000;
-                        3'd5: glyph_row = 8'b01000100;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "L": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000000;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01000000;
-                        3'd4: glyph_row = 8'b01000000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b01111110;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "M": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01100110;
-                        3'd2: glyph_row = 8'b01011010;
-                        3'd3: glyph_row = 8'b01000010;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "N": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01100010;
-                        3'd2: glyph_row = 8'b01010010;
-                        3'd3: glyph_row = 8'b01001010;
-                        3'd4: glyph_row = 8'b01000110;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "O": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01000010;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "P": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b01000000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b01000000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "R": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b01001000;
-                        3'd5: glyph_row = 8'b01000100;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "S": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111110;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b00111100;
-                        3'd4: glyph_row = 8'b00000010;
-                        3'd5: glyph_row = 8'b00000010;
-                        3'd6: glyph_row = 8'b01111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "T": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111110;
-                        3'd1: glyph_row = 8'b00011000;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00011000;
-                        3'd4: glyph_row = 8'b00011000;
-                        3'd5: glyph_row = 8'b00011000;
-                        3'd6: glyph_row = 8'b00011000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "U": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01000010;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "W": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b01000010;
-                        3'd4: glyph_row = 8'b01011010;
-                        3'd5: glyph_row = 8'b01100110;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "!": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00011000;
-                        3'd1: glyph_row = 8'b00011000;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00011000;
-                        3'd4: glyph_row = 8'b00000000;
-                        3'd5: glyph_row = 8'b00011000;
-                        3'd6: glyph_row = 8'b00011000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "X": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b00100100;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00011000;
-                        3'd4: glyph_row = 8'b00011000;
-                        3'd5: glyph_row = 8'b00100100;
-                        3'd6: glyph_row = 8'b01000010;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "Y": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01000010;
-                        3'd1: glyph_row = 8'b00100100;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00011000;
-                        3'd4: glyph_row = 8'b00011000;
-                        3'd5: glyph_row = 8'b00011000;
-                        3'd6: glyph_row = 8'b00011000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "0": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000110;
-                        3'd3: glyph_row = 8'b01001010;
-                        3'd4: glyph_row = 8'b01010010;
-                        3'd5: glyph_row = 8'b01100010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "1": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00011000;
-                        3'd1: glyph_row = 8'b00101000;
-                        3'd2: glyph_row = 8'b00001000;
-                        3'd3: glyph_row = 8'b00001000;
-                        3'd4: glyph_row = 8'b00001000;
-                        3'd5: glyph_row = 8'b00001000;
-                        3'd6: glyph_row = 8'b00111110;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "2": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b00000010;
-                        3'd3: glyph_row = 8'b00001100;
-                        3'd4: glyph_row = 8'b00110000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b01111110;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "3": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b00000010;
-                        3'd3: glyph_row = 8'b00011100;
-                        3'd4: glyph_row = 8'b00000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "4": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00000100;
-                        3'd1: glyph_row = 8'b00001100;
-                        3'd2: glyph_row = 8'b00010100;
-                        3'd3: glyph_row = 8'b00100100;
-                        3'd4: glyph_row = 8'b01111110;
-                        3'd5: glyph_row = 8'b00000100;
-                        3'd6: glyph_row = 8'b00000100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "5": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111110;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b00000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "6": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000000;
-                        3'd2: glyph_row = 8'b01000000;
-                        3'd3: glyph_row = 8'b01111100;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "7": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b01111110;
-                        3'd1: glyph_row = 8'b00000010;
-                        3'd2: glyph_row = 8'b00000100;
-                        3'd3: glyph_row = 8'b00001000;
-                        3'd4: glyph_row = 8'b00010000;
-                        3'd5: glyph_row = 8'b00100000;
-                        3'd6: glyph_row = 8'b00100000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "8": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b00111100;
-                        3'd4: glyph_row = 8'b01000010;
-                        3'd5: glyph_row = 8'b01000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "9": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00111100;
-                        3'd1: glyph_row = 8'b01000010;
-                        3'd2: glyph_row = 8'b01000010;
-                        3'd3: glyph_row = 8'b00111110;
-                        3'd4: glyph_row = 8'b00000010;
-                        3'd5: glyph_row = 8'b00000010;
-                        3'd6: glyph_row = 8'b00111100;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                ":": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00000000;
-                        3'd1: glyph_row = 8'b00011000;
-                        3'd2: glyph_row = 8'b00011000;
-                        3'd3: glyph_row = 8'b00000000;
-                        3'd4: glyph_row = 8'b00011000;
-                        3'd5: glyph_row = 8'b00011000;
-                        3'd6: glyph_row = 8'b00000000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "/": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00000010;
-                        3'd1: glyph_row = 8'b00000100;
-                        3'd2: glyph_row = 8'b00001000;
-                        3'd3: glyph_row = 8'b00010000;
-                        3'd4: glyph_row = 8'b00100000;
-                        3'd5: glyph_row = 8'b01000000;
-                        3'd6: glyph_row = 8'b00000000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
-                "-": begin
-                    case (row)
-                        3'd0: glyph_row = 8'b00000000;
-                        3'd1: glyph_row = 8'b00000000;
-                        3'd2: glyph_row = 8'b00000000;
-                        3'd3: glyph_row = 8'b01111110;
-                        3'd4: glyph_row = 8'b00000000;
-                        3'd5: glyph_row = 8'b00000000;
-                        3'd6: glyph_row = 8'b00000000;
-                        default: glyph_row = 8'b00000000;
-                    endcase
-                end
+                8'h20: rows = 56'h00000000000000;
+                8'h21: rows = 56'h18181818001818;
+                8'h22: rows = 56'h24242400000000;
+                8'h23: rows = 56'h24247E247E2424;
+                8'h24: rows = 56'h183E403C027C18;
+                8'h25: rows = 56'h62640810264600;
+                8'h26: rows = 56'h304848304A443A;
+                8'h27: rows = 56'h18181000000000;
+                8'h28: rows = 56'h0C10202020100C;
+                8'h29: rows = 56'h30080404040830;
+                8'h2A: rows = 56'h0024187E182400;
+                8'h2B: rows = 56'h0018187E181800;
+                8'h2C: rows = 56'h00000000181830;
+                8'h2D: rows = 56'h0000007E000000;
+                8'h2E: rows = 56'h00000000001818;
+                8'h2F: rows = 56'h02040810204000;
+                8'h30: rows = 56'h3C42464A52623C;
+                8'h31: rows = 56'h1828080808083E;
+                8'h32: rows = 56'h3C42020C30407E;
+                8'h33: rows = 56'h3C42021C02423C;
+                8'h34: rows = 56'h040C14247E0404;
+                8'h35: rows = 56'h7E40407C02423C;
+                8'h36: rows = 56'h3C40407C42423C;
+                8'h37: rows = 56'h7E020408102020;
+                8'h38: rows = 56'h3C42423C42423C;
+                8'h39: rows = 56'h3C42423E02023C;
+                8'h3A: rows = 56'h00181800181800;
+                8'h3B: rows = 56'h00181800181830;
+                8'h3C: rows = 56'h0C10204020100C;
+                8'h3D: rows = 56'h00007E007E0000;
+                8'h3E: rows = 56'h30080402040830;
+                8'h3F: rows = 56'h3C42020C180018;
+                8'h40: rows = 56'h3C425A5E5C403C;
+                8'h41: rows = 56'h1824427E424242;
+                8'h42: rows = 56'h7C42427C42427C;
+                8'h43: rows = 56'h3C42404040423C;
+                8'h44: rows = 56'h78444242424478;
+                8'h45: rows = 56'h7E40407C40407E;
+                8'h46: rows = 56'h7E40407C404040;
+                8'h47: rows = 56'h3C42404E42423C;
+                8'h48: rows = 56'h4242427E424242;
+                8'h49: rows = 56'h3C18181818183C;
+                8'h4A: rows = 56'h1E040404444438;
+                8'h4B: rows = 56'h42444870484442;
+                8'h4C: rows = 56'h4040404040407E;
+                8'h4D: rows = 56'h42665A42424242;
+                8'h4E: rows = 56'h4262524A464242;
+                8'h4F: rows = 56'h3C42424242423C;
+                8'h50: rows = 56'h7C42427C404040;
+                8'h51: rows = 56'h3C4242424A443A;
+                8'h52: rows = 56'h7C42427C484442;
+                8'h53: rows = 56'h3E40403C02027C;
+                8'h54: rows = 56'h7E181818181818;
+                8'h55: rows = 56'h4242424242423C;
+                8'h56: rows = 56'h42424242242418;
+                8'h57: rows = 56'h424242425A6642;
+                8'h58: rows = 56'h42241818182442;
+                8'h59: rows = 56'h42241818181818;
+                8'h5A: rows = 56'h7E02041820407E;
+                8'h5B: rows = 56'h3C20202020203C;
+                8'h5C: rows = 56'h40201008040200;
+                8'h5D: rows = 56'h3C04040404043C;
+                8'h5E: rows = 56'h18244200000000;
+                8'h5F: rows = 56'h0000000000007E;
+                8'h60: rows = 56'h30180C00000000;
+                8'h61: rows = 56'h00003C023E423E;
+                8'h62: rows = 56'h40405C6242625C;
+                8'h63: rows = 56'h00003C4240423C;
+                8'h64: rows = 56'h02023A4642463A;
+                8'h65: rows = 56'h00003C427E403C;
+                8'h66: rows = 56'h0E103C10101010;
+                8'h67: rows = 56'h003E42423E023C;
+                8'h68: rows = 56'h40405C62424242;
+                8'h69: rows = 56'h10003010101038;
+                8'h6A: rows = 56'h04000C04044438;
+                8'h6B: rows = 56'h40404448704844;
+                8'h6C: rows = 56'h30101010101038;
+                8'h6D: rows = 56'h00006C52525252;
+                8'h6E: rows = 56'h00005C62424242;
+                8'h6F: rows = 56'h00003C4242423C;
+                8'h70: rows = 56'h00005C62625C40;
+                8'h71: rows = 56'h00003A46463A02;
+                8'h72: rows = 56'h00005C62404040;
+                8'h73: rows = 56'h00003E403C027C;
+                8'h74: rows = 56'h10107C1010120C;
+                8'h75: rows = 56'h0000424242463A;
+                8'h76: rows = 56'h00004242242418;
+                8'h77: rows = 56'h000042425A6642;
+                8'h78: rows = 56'h00004224182442;
+                8'h79: rows = 56'h000042423E023C;
+                8'h7A: rows = 56'h00007E0418207E;
+                8'h7B: rows = 56'h0E10106010100E;
+                8'h7C: rows = 56'h18181800181818;
+                8'h7D: rows = 56'h70080806080870;
+                8'h7E: rows = 56'h0000324C000000;
+                default: rows = 56'h00000000000000;
+            endcase
+
+            case (row)
+                3'd0: glyph_row = rows[55:48];
+                3'd1: glyph_row = rows[47:40];
+                3'd2: glyph_row = rows[39:32];
+                3'd3: glyph_row = rows[31:24];
+                3'd4: glyph_row = rows[23:16];
+                3'd5: glyph_row = rows[15:8];
+                3'd6: glyph_row = rows[7:0];
                 default: glyph_row = 8'b00000000;
             endcase
         end
@@ -1596,6 +1283,123 @@ module oled_ui_display (
         end
     endfunction
 
+    function [11:0] make_text_info;
+        input text_valid;
+        input [7:0] ch;
+        input [2:0] glyph_col_index;
+        begin
+            make_text_info = {text_valid, ch, glyph_col_index};
+        end
+    endfunction
+
+    function [19:0] make_page_info;
+        input [7:0] direct_byte;
+        input [11:0] text_info;
+        begin
+            make_page_info = {direct_byte, text_info};
+        end
+    endfunction
+
+    function [11:0] text_line_info;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [7:0] x_start;
+        input [3:0] len;
+        input [3:0] text_kind;
+        reg [7:0] local_col;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            text_line_info = make_text_info(1'b0, " ", 3'd0);
+            if ((page == target_page) && (col >= x_start) && (col < x_start + {1'b0, len, 3'b000})) begin
+                local_col = col - x_start;
+                char_index = {1'b0, local_col[7:3]};
+                glyph_col_index = local_col[2:0];
+                case (text_kind)
+                    4'd0: ch = packed9_char(date_text_ascii, char_index);
+                    4'd1: ch = temp_char(char_index);
+                    4'd2: ch = schedule_char(char_index);
+                    4'd3: ch = alarm_char(char_index);
+                    4'd4: ch = packed12_char(countdown_text_ascii, char_index);
+                    4'd5: ch = format_char(char_index);
+                    4'd6: ch = packed12_char(notify_text_ascii, char_index);
+                    4'd7: ch = label_char(render_display_label_ascii, char_index[2:0]);
+                    4'd8: ch = comm_title_char(char_index);
+                    4'd9: ch = comm_status_text_char(char_index);
+                    4'd10: ch = comm_hint_char(char_index);
+                    4'd11: ch = comm_empty_char(char_index);
+                    4'd12: ch = comm_date_char(char_index);
+                    4'd13: ch = comm_time_char(char_index);
+                    4'd14: ch = comm_slot_char(char_index);
+                    4'd15: ch = comm_reply_title_char(char_index);
+                    default: ch = " ";
+                endcase
+                text_line_info = make_text_info(1'b1, ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [11:0] comm_message_line_info;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [2:0] line_index;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_message_line_info = make_text_info(1'b0, " ", 3'd0);
+            if ((page == target_page) && (col < 8'd128)) begin
+                char_index = {1'b0, col[6:3]};
+                glyph_col_index = col[2:0];
+                ch = comm_message_char(line_index, char_index);
+                comm_message_line_info = make_text_info(1'b1, ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [11:0] comm_reply_line_info;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [3:0] line_index;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_reply_line_info = make_text_info(1'b0, " ", 3'd0);
+            if ((page == target_page) && (col < 8'd128)) begin
+                char_index = {1'b0, col[6:3]};
+                glyph_col_index = col[2:0];
+                ch = comm_reply_text_char(line_index, char_index);
+                comm_reply_line_info = make_text_info(1'b1, ch, glyph_col_index);
+            end
+        end
+    endfunction
+
+    function [11:0] comm_reply_index_info;
+        input [2:0] page;
+        input [7:0] col;
+        input [2:0] target_page;
+        input [7:0] x_start;
+        reg [7:0] local_col;
+        reg [3:0] char_index;
+        reg [2:0] glyph_col_index;
+        reg [7:0] ch;
+        begin
+            comm_reply_index_info = make_text_info(1'b0, " ", 3'd0);
+            if ((page == target_page) && (col >= x_start) && (col < x_start + 8'd16)) begin
+                local_col = col - x_start;
+                char_index = {1'b0, local_col[7:3]};
+                glyph_col_index = local_col[2:0];
+                ch = comm_reply_index_char(char_index);
+                comm_reply_index_info = make_text_info(1'b1, ch, glyph_col_index);
+            end
+        end
+    endfunction
+
     function [7:0] popup_box_data;
         input [2:0] page;
         input [7:0] col;
@@ -1618,6 +1422,133 @@ module oled_ui_display (
                 end
             end
             popup_box_data = out_byte;
+        end
+    endfunction
+
+    function [19:0] page_info;
+        input [2:0] page;
+        input [7:0] col;
+        input edit_flag;
+        reg [11:0] text_info;
+        begin
+            page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+
+            if (display_mode == MODE_COMM) begin
+                if (render_comm_message_valid && render_comm_reply_mode) begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, SIDE_PAGE, 8'd24, 4'd10, 4'd15));
+                        end
+                        SCHEDULE_PAGE: begin
+                            page_info = make_page_info(8'h00, comm_reply_index_info(page, col, SCHEDULE_PAGE, 8'd56));
+                        end
+                        CENTER_PAGE_BASE: begin
+                            page_info = make_page_info(8'h00, comm_reply_line_info(page, col, CENTER_PAGE_BASE, 4'd0));
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            page_info = make_page_info(8'h00, comm_reply_line_info(page, col, CENTER_PAGE_BASE + 1'b1, 4'd1));
+                        end
+                        STATUS_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd13));
+                        end
+                        default: begin
+                            page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+                        end
+                    endcase
+                end else if (render_comm_message_valid) begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, SIDE_PAGE, 8'd16, 4'd12, 4'd12));
+                        end
+                        SCHEDULE_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, SCHEDULE_PAGE, 8'd24, 4'd10, 4'd13));
+                        end
+                        CENTER_PAGE_BASE: begin
+                            page_info = make_page_info(8'h00, comm_message_line_info(page, col, CENTER_PAGE_BASE, 3'd0));
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            page_info = make_page_info(8'h00, comm_message_line_info(page, col, CENTER_PAGE_BASE + 1'b1, 3'd1));
+                        end
+                        ALARM_PAGE: begin
+                            page_info = make_page_info(8'h00, comm_message_line_info(page, col, ALARM_PAGE, 3'd2));
+                        end
+                        STATUS_PAGE: begin
+                            page_info = make_page_info(8'h00, comm_message_line_info(page, col, STATUS_PAGE, 3'd3));
+                        end
+                        default: begin
+                            page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+                        end
+                    endcase
+                end else begin
+                    case (page)
+                        SIDE_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, SIDE_PAGE, 8'd28, 4'd9, 4'd8));
+                        end
+                        SCHEDULE_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, SCHEDULE_PAGE, 8'd32, 4'd8, 4'd10));
+                        end
+                        CENTER_PAGE_BASE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, CENTER_PAGE_BASE, 8'd48, 4'd4, 4'd7));
+                        end
+                        CENTER_PAGE_BASE + 1'b1: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, CENTER_PAGE_BASE + 1'b1, 8'd48, 4'd4, 4'd9));
+                        end
+                        ALARM_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, ALARM_PAGE, 8'd40, 4'd6, 4'd11));
+                        end
+                        STATUS_PAGE: begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, STATUS_PAGE, 8'd40, 4'd7, 4'd14));
+                        end
+                        default: begin
+                            page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+                        end
+                    endcase
+                end
+            end else begin
+                case (page)
+                    SIDE_PAGE: begin
+                        text_info = text_line_info(page, col, SIDE_PAGE, 8'd2, 4'd9, 4'd0);
+                        if (!text_info[11]) begin
+                            text_info = text_line_info(page, col, SIDE_PAGE, 8'd96, 4'd4, 4'd1);
+                        end
+                        page_info = make_page_info(8'h00, text_info);
+                    end
+                    SCHEDULE_PAGE: begin
+                        page_info = make_page_info(8'h00, text_line_info(page, col, SCHEDULE_PAGE, 8'd24, 4'd8, 4'd2));
+                    end
+                    CENTER_PAGE_BASE,
+                    CENTER_PAGE_BASE + 1'b1: begin
+                        if (page == CENTER_PAGE_BASE) begin
+                            page_info = make_page_info(8'h00, text_line_info(page, col, CENTER_PAGE_BASE, 8'd44, 4'd5, 4'd7));
+                        end else if (edit_flag && (col >= 8'd44) && (col < 8'd84)) begin
+                            page_info = make_page_info(8'h01, make_text_info(1'b0, " ", 3'd0));
+                        end else begin
+                            page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+                        end
+                    end
+                    ALARM_PAGE: begin
+                        text_info = text_line_info(page, col, ALARM_PAGE, 8'd2, 4'd7, 4'd3);
+                        if (!text_info[11]) begin
+                            text_info = text_line_info(page, col, ALARM_PAGE, 8'd96, 4'd3, 4'd5);
+                        end
+                        page_info = make_page_info(8'h00, text_info);
+                    end
+                    STATUS_PAGE: begin
+                        page_info = make_page_info(8'h00, text_line_info(page, col, STATUS_PAGE, 8'd16, 4'd12, 4'd4));
+                    end
+                    default: begin
+                        page_info = make_page_info(8'h00, make_text_info(1'b0, " ", 3'd0));
+                    end
+                endcase
+            end
+
+            if (render_notify_active) begin
+                if ((page >= 3'd2) && (page <= 3'd6) &&
+                    (col >= POPUP_X_LEFT) && (col <= POPUP_X_RIGHT)) begin
+                    page_info = make_page_info(popup_box_data(page, col),
+                                               text_line_info(page, col, CENTER_PAGE_BASE, 8'd16, 4'd12, 4'd6));
+                end
+            end
         end
     endfunction
 
@@ -1804,7 +1735,6 @@ module oled_ui_display (
             render_comm_date_line_ascii <= {12{8'h20}};
             render_comm_time_line_ascii <= {12{8'h20}};
             render_comm_message_len <= 7'd0;
-            render_comm_message_window_ascii <= {64{8'h20}};
             render_comm_msg_line0_ascii <= {16{8'h20}};
             render_comm_msg_line1_ascii <= {16{8'h20}};
             render_comm_msg_line2_ascii <= {16{8'h20}};
@@ -1879,7 +1809,6 @@ module oled_ui_display (
                                                 comm_timestamp_ascii[18*8 +: 8],
                                                 "]"," "," "};
                 render_comm_message_len <= comm_message_len;
-                render_comm_message_window_ascii <= comm_message_window_ascii;
                 render_comm_msg_line0_ascii <= {comm_message_window_ascii[0*8 +: 8],
                                                 comm_message_window_ascii[1*8 +: 8],
                                                 comm_message_window_ascii[2*8 +: 8],
@@ -1959,6 +1888,7 @@ module oled_ui_display (
             page_data_page  <= 3'd0;
             page_data_col   <= 8'd0;
             page_data_edit  <= 1'b0;
+            page_data_info  <= {8'h00, 1'b0, 8'h20, 3'd0};
             page_data_byte  <= 8'd0;
             waiting_done  <= 1'b0;
             ll_cmd_valid  <= 1'b0;
@@ -2092,8 +2022,15 @@ module oled_ui_display (
                                     page_data_phase <= 2'd1;
                                 end
                                 2'd1: begin
-                                    page_data_byte <= page_data(page_data_page, page_data_col, page_data_edit);
+                                    page_data_info <= page_info(page_data_page, page_data_col, page_data_edit);
                                     page_data_phase <= 2'd2;
+                                end
+                                2'd2: begin
+                                    page_data_byte <= page_data_info[19:12] |
+                                                      (page_data_info[11] ?
+                                                       glyph_column(page_data_info[10:3], page_data_info[2:0]) :
+                                                       8'h00);
+                                    page_data_phase <= 2'd3;
                                 end
                                 default: begin
                                     issue_ll_cmd(CMD_WRITE, page_data_byte);

@@ -1745,3 +1745,258 @@ Phase:
 建议提交信息:
 
 - `feat(pc): publish clocklink studio app`
+
+### 2026-06-09 0125 - 脏文件清理
+
+Phase:
+
+- Phase 9：上板验证后仓库清理
+
+本次目标:
+
+- 用户已确认 Nexys A7 上板验证 OK。
+- 清理明显无用的 Vivado/XSim/JVM 工具产物和早期临时草稿。
+- 保留已经验证 OK 的 HDL、仿真、脚本和交付文档改动，不误删主线资产。
+
+完成内容:
+
+- 删除根目录下 Vivado/XSim 运行日志、backup 日志、`.pb` 文件、JVM 崩溃 dump/log、`dfx_runtime.txt` 和 `clockInfo.txt`。
+- 删除早期初始化草稿 `任务.txt`，其内容已被正式 `AGENTS.md`、`docs/AGENT_WORKFLOW.md`、`docs/AGENT_TASKS.md` 等文档替代。
+- `.gitignore` 增加 `clockInfo.txt`，避免 Vivado clock routing debug 文件再次进入未跟踪列表。
+- 保留 `scripts/run_phase_impl_timing_check.tcl`、`sim/comm/tb_message_store.v`、`sim/comm/tb_oled_glyph.v` 和未跟踪中文交付文档，后续由人工确认是否纳入提交。
+
+修改文件:
+
+- `.gitignore`
+- `docs/AGENT_WORKLOG.md`
+
+删除文件:
+
+- `clockInfo.txt`
+- `dfx_runtime.txt`
+- `hs_err_pid28816.dmp`
+- `hs_err_pid28816.log`
+- `hs_err_pid31616.dmp`
+- `hs_err_pid31616.log`
+- `vivado*.jou`
+- `vivado*.log`
+- `xelab.log`
+- `xelab.pb`
+- `xsim*.jou`
+- `xsim*.log`
+- `xvlog.log`
+- `xvlog.pb`
+- `任务.txt`
+
+运行检查:
+
+- `git status --short`
+- `git ls-files -o --exclude-standard`
+- `git diff -- .gitignore`
+
+检查结果:
+
+- 明显工具产物和早期草稿已清理。
+- 剩余脏项均为源码/文档/脚本/仿真相关改动或删除记录，未自动回退。
+
+已知问题:
+
+- 工作区仍有 `PROJECT_STATUS.md` 和旧 `docs/功能与修改日志.md` 的删除记录。
+- 工作区仍有 HDL 显示/时序优化改动、`sim/comm/README.md` 修改、3 个未跟踪中文文档、实现 timing 脚本和 2 个新增 testbench。
+
+下一步建议:
+
+- 人工确认剩余未跟踪文档和删除记录是否属于交付内容，然后再分组 stage/commit。
+
+建议提交信息:
+
+- `chore: clean generated tool artifacts`
+
+### 2026-06-09 0148 - ClockLink 验收报告终稿整理
+
+Phase:
+
+- 验收报告写作与交付整理
+
+本次目标:
+
+- 在当前 `clock_amd` 项目目录内，基于已有验收报告骨架、README、docs、HDL、XDC、PC 软件、仿真记录和 Vivado 实现报告，产出一份可直接提交和用于课堂验收展示的 ClockLink 智能电子钟系统验收介绍文档。
+
+完成内容:
+
+- 阅读并核验 `README.md`、`HANDOFF.md`、`docs/工程模块使用说明.md`、`docs/ClockLink_Studio_PC_Software_Design.md`、`docs/AGENT_WORKFLOW.md`、`docs/AGENT_TASKS.md`、`docs/AGENT_WORKLOG.md`、`docs/UART_PROTOCOL.md`、`docs/CODEBASE_MAP.md`、`docs/COMM_MODE_FPGA_PLAN.md`、`docs/FINAL_DEMO_GUIDE.md`。
+- 阅读核心 HDL、XDC、PC 软件目录、仿真目录和 `clock_amd.runs/impl_1` Vivado routed 报告。
+- 建立事实证据清单，区分已实现、已仿真、已生成 bitstream、用户已上板确认和仍建议补截图的内容。
+- 生成完整中文验收介绍文档 `验收报告_ClockLink_终稿.md`，按产品展示、技术验收和课程知识总结组织。
+- 使用 pandoc 生成 `验收报告_ClockLink_终稿.docx`，并运行格式整理脚本设置页边距、标题/正文字体和表格线框。
+- 生成写作工作记录、事实证据清单和最终质量检查清单。
+
+修改/新增文件:
+
+- `验收报告_ClockLink_终稿.md`
+- `验收报告_ClockLink_终稿.docx`
+- `artifacts/report-writing/agent_report_worklog.md`
+- `artifacts/report-writing/fact_check_table.md`
+- `artifacts/report-writing/final_quality_checklist.md`
+- `artifacts/report-writing/format_report_docx.py`
+- `docs/AGENT_WORKLOG.md`
+
+运行检查:
+
+- `python -m pytest`，工作目录 `software/clocklink_studio`
+- `pandoc 验收报告_ClockLink_终稿.md -o 验收报告_ClockLink_终稿.docx --toc --toc-depth=3`
+- `python artifacts/report-writing/format_report_docx.py`
+- `python -c "from docx import Document; ..."` 检查 DOCX 可读取
+- `pandoc 验收报告_ClockLink_终稿.md -o 验收报告_ClockLink_终稿.pdf --toc --toc-depth=3 --pdf-engine=xelatex`
+
+检查结果:
+
+- PC 软件 pytest 当前结果：17 项全部通过。
+- DOCX 已生成并可由 python-docx 打开；检查到 221 个段落、13 张表。
+- Markdown 正文约 28,244 字符，其中中文字符约 12,128。
+- PDF 未生成，原因是当前环境缺少 `xelatex`。
+- 正式报告采用当前 Vivado `impl_1` routed timing 指标：`WNS=+0.325ns`、`TNS=0.000ns`、失败端点 0，来源为 `clock_amd.runs/impl_1/clock_amd_top_timing_summary_routed.rpt`。
+- 资源利用采用 `clock_amd_top_utilization_placed.rpt`：LUT 8184、寄存器 8161、RAMB18 1、DSP 0、IOB 62。
+
+已知边界:
+
+- `MSG_GET/MSG_DATA` 在协议中保留，但 FPGA 当前资源收敛版本返回 unsupported，报告中已写为后续流式读回扩展。
+- `ALARM_DUMP/SCHED_DUMP` 当前不写成 FPGA 已实现；报告中说明可通过循环单槽 `GET` 读取。
+- ADT7420 温度链路已接入，但仍建议验收前补 OLED 温度读数实拍。
+- 真实串口长期稳定性截图、OLED 实拍、Vivado GUI 截图和 pytest 截图建议验收前补充。
+
+下一步建议:
+
+- 在正式提交前补充板卡实物、OLED 页面、ClockLink Studio 真实串口 GUI、Vivado timing/utilization、pytest 17 passed 等截图。
+- 如需 PDF，安装 LaTeX/XeLaTeX 或使用 Word/WPS/LibreOffice 从 DOCX 导出。
+
+建议提交信息:
+
+- `docs: add ClockLink acceptance report final draft`
+
+### 2026-06-11 1730 - 整点报时与 OLED ASCII 字库补齐
+
+Phase:
+
+- Phase 9：功能补全与显示资源收口
+
+本次目标:
+
+- 实现整点报时短蜂鸣。
+- 补齐 OLED 字库在当前 FPGA/ClockLink 协议可承载范围内的完整可打印 ASCII。
+- 明确记录 Unicode/中文显示不属于当前 ASCII UART 协议和 8-bit 消息缓存范围。
+
+完成内容:
+
+- 在 `clock.v` 中新增 `hourly_chime_pulse`，正常自动走时从 `MM:SS=59:59` 滚入下一小时 `HH:00:00` 时触发。
+- 在 `notification_ctrl.v` 中新增整点报时输入，输出两段 100 ms 短蜂鸣，中间间隔 100 ms。
+- 整点报时不改变 `notify_active/notify_type/notify_slot`，不触发 OLED 弹窗，不锁定 UI；倒计时、闹钟和日程提醒优先覆盖整点报时。
+- 将 `oled_ui_display.v` 的字形表整理为 7 行位图，覆盖可打印 ASCII `0x20..0x7E`；空格保持空白，小写 `a-z` 使用独立字形。
+- 扩展 `tb_oled_glyph.v`，逐个检查 `0x21..0x7E` 至少有像素，并检查小写与大写区分。
+- 新增 `tb_notification_hourly_chime.v`，验证整点短蜂鸣、不产生 notify 状态以及闹钟覆盖整点报时。
+- 更新 `README.md`、`docs/工程模块使用说明.md`、`docs/UART_PROTOCOL.md` 和 `sim/comm/README.md`。
+
+修改文件:
+
+- `README.md`
+- `clock_amd.srcs/sources_1/new/clock.v`
+- `clock_amd.srcs/sources_1/new/notification_ctrl.v`
+- `clock_amd.srcs/sources_1/new/oled_ui_display.v`
+- `docs/工程模块使用说明.md`
+- `docs/UART_PROTOCOL.md`
+- `sim/comm/README.md`
+- `sim/comm/tb_oled_glyph.v`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `sim/comm/tb_notification_hourly_chime.v`
+
+运行检查:
+
+- `xvlog clock_amd.srcs/sources_1/new/notification_ctrl.v sim/comm/tb_notification_hourly_chime.v`
+- `xelab tb_notification_hourly_chime -s tb_notification_hourly_chime_sim`
+- `xsim tb_notification_hourly_chime_sim -runall`
+- `xvlog clock_amd.srcs/sources_1/new/i2c_master_simple.v clock_amd.srcs/sources_1/new/oled_date_status.v clock_amd.srcs/sources_1/new/oled_countdown_status.v clock_amd.srcs/sources_1/new/oled_notify_status.v clock_amd.srcs/sources_1/new/oled_ui_display.v sim/comm/tb_oled_glyph.v`
+- `xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision tb_oled_glyph -s tb_oled_glyph_sim`
+- `xsim tb_oled_glyph_sim -runall`
+- 全源 `xvlog`
+- `xelab --timescale 1ns/1ps --override_timeunit --override_timeprecision clock_amd_top -s clock_amd_top_elab`
+- `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
+
+检查结果:
+
+- `tb_notification_hourly_chime` 输出 `PASS tb_notification_hourly_chime`。
+- `tb_oled_glyph` 输出 `PASS tb_oled_glyph`。
+- 全源 `xvlog` 通过。
+- 顶层 `xelab` 通过。
+- Vivado 综合通过，日志显示 `synth_design completed successfully` 和 `All user specified timing constraints are met.`。
+- 最新综合时序：`WNS=+1.779ns`、`TNS=0.000ns`、失败端点 `0`。
+
+已知问题:
+
+- 尚未重新生成 bitstream，尚未完成 Nexys A7 上板实测。
+- Unicode/中文仍不支持；当前 UART 协议、PC 编码器和 FPGA 消息缓存均限制为可打印 ASCII。若后续需要中文，需要单独设计 UTF-8/码点解析、字体 ROM/外部字库和 OLED 渲染流程。
+- `protocol_parser` 既有 `msg_char_buf_reg` set/reset priority 综合 warning 仍存在，本次未处理。
+- 工作区仍存在本次任务之外的历史脏文件和未跟踪交付文档，本次未回退。
+
+下一步建议:
+
+- 重新生成 bitstream 并上板验证整点蜂鸣、闹钟覆盖整点蜂鸣、COMM 消息大小写和标点显示。
+- 若需要真正 Unicode/中文显示，先冻结新的文本编码和字库架构，不应直接在现有 ASCII 帧里发送 UTF-8。
+
+建议提交信息:
+
+- `feat(fpga): add hourly chime and printable ascii oled font`
+
+### 2026-06-11 2007 - 远端同步检查与本地改动发布
+
+Phase:
+
+- Phase 9：Git 远端同步
+
+本次目标:
+
+- 检查 `origin/feature/clocklink-uart-comm` 是否包含本地最新代码。
+- 若远端未包含本地改动，则提交并推送本地代码。
+
+完成内容:
+
+- 使用 `git fetch --all --prune` 更新远端引用。
+- 确认当前分支为 `feature/clocklink-uart-comm`，跟踪 `origin/feature/clocklink-uart-comm`。
+- 确认本地 HEAD 与 upstream 提交计数为 `0/0`，即已提交历史相同。
+- 发现工作区仍有未提交源码、文档、仿真和报告改动，因此准备以新提交同步到远端。
+- 将 `vivado_pid*.str` 加入 `.gitignore`，避免 Vivado 临时字符串文件进入源码管理。
+
+修改/新增文件范围:
+
+- FPGA HDL：显示路径时序优化、整点报时、OLED ASCII 字库。
+- 仿真：消息缓存、OLED 字库、整点报时 testbench。
+- 脚本：实现后 timing 检查脚本。
+- 文档：README、工程说明、UART 协议、AGENT 工作日志、验收报告和相关写作材料。
+- 清理：删除旧状态/旧日志文档，保留当前 `README.md`、`docs/AGENT_WORKLOG.md` 和新报告体系。
+
+运行检查:
+
+- `git fetch --all --prune`
+- `git rev-list --left-right --count HEAD...origin/feature/clocklink-uart-comm`
+- `git status -sb`
+- `git diff --check`
+
+检查结果:
+
+- 远端可访问，fetch 成功。
+- 本地 HEAD 与远端 HEAD 起点一致，但远端缺少工作区未提交改动。
+- `git diff --check` 未发现空白错误，仅有 LF/CRLF 转换提示。
+
+已知问题:
+
+- 本记录写入时尚未完成 commit/push；提交与推送结果将在命令执行后由本次对话最终回复说明。
+
+下一步建议:
+
+- 完成 commit 后推送到 `origin/feature/clocklink-uart-comm`。
+
+建议提交信息:
+
+- `feat: finalize clocklink fpga features and docs`

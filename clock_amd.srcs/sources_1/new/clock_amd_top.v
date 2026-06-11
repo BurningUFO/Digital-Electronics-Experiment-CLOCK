@@ -159,13 +159,6 @@ module clock_amd_top(
     nexys_seg_scan u_nexys_seg_scan(
         .clk(CLK100MHZ),
         .rst(CPU_RESETN),
-        .sec_unit_seg(8'd0),
-        .sec_ten_bcd(4'd0),
-        .min_unit_bcd(4'd0),
-        .min_ten_bcd(4'd0),
-        .hour_unit_bcd(4'd0),
-        .hour_ten_bcd(4'd0),
-        .full_display_en(1'b1),
         .digit_code_bus(digit_code_bus),
         .dp_mask(dp_mask),
         .an(AN),
