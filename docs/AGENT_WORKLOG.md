@@ -2257,3 +2257,67 @@ Phase:
 下一步建议:
 
 - 推送更新后的 `main` 到远端 `origin/main`，再检查本地与远端提交一致性。
+
+### 2026-06-12 1508 - ClockLink Studio 发行包整理
+
+Phase:
+
+- PC 软件发行工程化整理
+
+本次目标:
+
+- 按“源码进 Git、构建产物进 GitHub Release”的方式整理 ClockLink Studio 上位机软件。
+- 保留可复现打包配置，不再把生成的 EXE 当作源码提交。
+
+完成内容:
+
+- 新增本地打包脚本 `scripts/package_clocklink_studio.ps1`，可安装构建依赖、运行 pytest、调用 PyInstaller，并生成发行 ZIP。
+- 新增 `software/clocklink_studio/requirements-build.txt`，把 PyInstaller 作为构建依赖单独管理。
+- 新增 GitHub Actions workflow `.github/workflows/clocklink-studio-release.yml`，支持手动构建 artifact 和推送 `v*` 标签时创建/更新 GitHub Release。
+- 新增 `docs/ClockLink_Studio_Release_Guide.md`，说明版本号、打包命令、Release 附件内容和发布前检查。
+- 更新根 README 和软件 README，明确 `build/`、`dist/`、`artifacts/releases/` 是生成产物，正式分发应使用 Release 附件。
+- 更新 `.gitignore`，忽略本地发行 ZIP 输出目录和 Python package 元数据。
+- 将已跟踪的 `software/clocklink_studio/dist/ClockLinkStudio.exe` 从 Git 索引移除；本地 EXE 文件保留在已忽略的 `dist/` 目录。
+
+修改文件:
+
+- `.gitignore`
+- `README.md`
+- `software/clocklink_studio/README.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- `software/clocklink_studio/requirements-build.txt`
+- `scripts/package_clocklink_studio.ps1`
+- `.github/workflows/clocklink-studio-release.yml`
+- `docs/ClockLink_Studio_Release_Guide.md`
+
+移出 Git 跟踪:
+
+- `software/clocklink_studio/dist/ClockLinkStudio.exe`
+
+运行检查:
+
+- `git diff --check`
+- `cd software/clocklink_studio; python -m pytest`
+- `python desktop.py --self-test`
+- `powershell -ExecutionPolicy Bypass -File scripts\package_clocklink_studio.ps1 -Version dev -SkipTests`
+
+检查结果:
+
+- `git diff --check` 未发现空白错误，仅有 Git LF/CRLF 转换提示。
+- PC 软件 pytest 通过，17 项全部通过。
+- `python desktop.py --self-test` 通过，mock ping 返回成功。
+- 本地打包脚本通过，生成 `artifacts/releases/ClockLinkStudio-dev-win64.zip`，大小约 11 MB。
+- 打包过程中 pip 因当前网络/权限限制对索引访问重试，但本地依赖已满足，不影响 PyInstaller 构建和 ZIP 生成。
+
+已知问题:
+
+- 本次只整理发行工程，不创建正式 `v*` 标签，也不直接创建 GitHub Release。
+- 本地未跟踪目录 `PPT/` 和 `贡献表/` 保持不变，不纳入本次发行整理。
+- `software/clocklink_studio/dist/ClockLinkStudio.exe` 已从 Git 索引移除，但本地文件仍保留在已忽略的 `dist/` 目录中；后续二进制应通过 Release 附件分发。
+
+下一步建议:
+
+- 检查通过后提交本次发行整理；需要正式发布时再打 `v1.0.0` 标签并推送。

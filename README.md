@@ -72,10 +72,36 @@
 - `clock_amd.srcs/constrs_1/new/`：唯一有效约束目录
 - `scripts/`：工程维护和检查脚本
 - `docs/`：当前有效说明文档
+- `software/clocklink_studio/`：ClockLink Studio 上位机源码、测试、PyInstaller 配置和软件说明
 - `artifacts/tool-runs/`：本地 Vivado/XSim 运行产物归档，不作为主线源码
+- `artifacts/releases/`：本地软件发行 ZIP 输出目录，不作为源码提交
 - `HANDOFF.md`：给新 agent 的接手说明
 - `docs/AGENT_WORKLOG.md`：当前 ClockLink 阶段状态、检查结果和下一步
 - `docs/FINAL_DEMO_GUIDE.md`：ClockLink 最终演示流程
+- `docs/ClockLink_Studio_Release_Guide.md`：ClockLink Studio 打包和 GitHub Release 发行流程
+
+## ClockLink Studio 软件发行
+
+ClockLink Studio 采用“源码进 Git、构建产物进 GitHub Release”的方式管理。
+
+本地构建 Windows 发行包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\package_clocklink_studio.ps1 -Version v1.0.0
+```
+
+构建结果：
+
+```text
+artifacts/releases/ClockLinkStudio-v1.0.0-win64.zip
+```
+
+推送 `v*` 标签会触发 GitHub Actions 自动构建并上传 Release 附件：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## 使用方式
 

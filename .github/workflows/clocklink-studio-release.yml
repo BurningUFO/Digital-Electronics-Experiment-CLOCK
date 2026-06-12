@@ -1,0 +1,108 @@
+name: ClockLink Studio Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version, for example v1.0.0 or dev"
+        required: false
+        default: "dev"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-package:
+    name: Build Windows package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: software/clocklink_studio
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Run tests
+        working-directory: software/clocklink_studio
+        run: python -m pytest
+
+      - name: Build EXE
+        working-directory: software/clocklink_studio
+        run: python -m PyInstaller --noconfirm ClockLinkStudio.spec
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            $version = "dev"
+          }
+
+          $packageName = "ClockLinkStudio-$version-win64"
+          New-Item -ItemType Directory -Force -Path $packageName | Out-Null
+          Copy-Item -LiteralPath "software/clocklink_studio/dist/ClockLinkStudio.exe" -Destination "$packageName/ClockLinkStudio.exe"
+          Copy-Item -LiteralPath "software/clocklink_studio/README.md" -Destination "$packageName/README.md"
+          Copy-Item -LiteralPath "docs/UART_PROTOCOL.md" -Destination "$packageName/UART_PROTOCOL.md"
+
+          @"
+          ClockLink Studio $version
+
+          Run:
+            ClockLinkStudio.exe
+
+          Serial defaults:
+            115200 baud, 8 data bits, no parity, 1 stop bit
+
+          Notes:
+            - Mock mode works without FPGA hardware.
+            - Serial mode requires the Nexys A7 firmware that implements the ClockLink UART protocol.
+            - The UART protocol document is included as UART_PROTOCOL.md.
+          "@ | Set-Content -LiteralPath "$packageName/RELEASE_NOTES.txt" -Encoding UTF8
+
+          Compress-Archive -Path "$packageName/*" -DestinationPath "$packageName.zip"
+          "PACKAGE_NAME=$packageName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{ env.PACKAGE_NAME }}.zip
+
+      - name: Publish GitHub Release for tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $asset = "$env:PACKAGE_NAME.zip"
+          $notes = @"
+          ClockLink Studio $tag
+
+          - Windows GUI package built by GitHub Actions.
+          - Includes ClockLinkStudio.exe, README.md, UART_PROTOCOL.md, and RELEASE_NOTES.txt.
+          - Source code remains in Git; generated binaries are attached to this Release.
+          "@
+
+          if (gh release view $tag 2>$null) {
+            gh release upload $tag $asset --clobber
+          } else {
+            $notes | Set-Content -LiteralPath release_notes.md -Encoding UTF8
+            gh release create $tag $asset --title "ClockLink Studio $tag" --notes-file release_notes.md
+          }
