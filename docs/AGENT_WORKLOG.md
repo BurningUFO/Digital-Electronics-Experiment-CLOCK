@@ -2217,6 +2217,8 @@ Phase:
 - 确认当前最新提交分支为 `feature/clocklink-uart-comm`。
 - 确认本地 `main` 是 `feature/clocklink-uart-comm` 的祖先，可执行快进合并，无需冲突解决。
 - 先提交当前 feature 分支上已跟踪的中文注释整理和本记录，再快进 `main`。
+- 推送 `main:main` 时发现远端 `origin/main` 是旧仓库布局历史，和当前独立 `clock_amd` 工作区无共同祖先，普通快进推送被 Git 拒绝。
+- 未使用强推；改为在本地 `main` 上用 `--allow-unrelated-histories -s ours` 创建记录型 merge commit，接入 `origin/main` 历史但保持当前 ClockLink 文件树不变，便于后续正常快进推送远端 `main`。
 - 未跟踪目录 `PPT/` 和 `贡献表/` 不纳入本次提交。
 
 修改文件:
@@ -2235,12 +2237,16 @@ Phase:
 - `git branch -a --sort=-committerdate`
 - `git log --oneline --decorate --graph --all -n 25`
 - `git merge-base --is-ancestor main feature/clocklink-uart-comm`
+- `git push origin main:main`
+- `git merge --allow-unrelated-histories -s ours origin/main`
 - `git diff --check`
 
 检查结果:
 
 - `feature/clocklink-uart-comm` 是当前最近更新的功能分支。
 - 本地 `main` 可以快进到该功能分支。
+- 初次 `git push origin main:main` 被拒绝，原因是远端 `origin/main` 和当前独立工作区历史不相连，不能快进。
+- 已创建记录型 merge commit 连接远端旧 `main` 历史，未覆盖当前 ClockLink 文件树。
 - `git diff --check` 未发现空白错误，仅有 Git LF/CRLF 转换提示。
 
 已知问题:
@@ -2250,4 +2256,4 @@ Phase:
 
 下一步建议:
 
-- 快进 `main` 后推送到远端 `origin/main`，再检查本地与远端提交一致性。
+- 推送更新后的 `main` 到远端 `origin/main`，再检查本地与远端提交一致性。
