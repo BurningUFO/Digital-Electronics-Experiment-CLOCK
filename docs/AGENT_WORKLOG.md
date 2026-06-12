@@ -2376,3 +2376,52 @@ Phase:
 下一步建议:
 
 - 提交本记录，推送 `main`，创建并推送 `v1.0.0` 标签，然后检查 GitHub Actions/Release 状态。
+
+### 2026-06-12 1649 - 产品化 README 整理
+
+Phase:
+
+- 文档产品化 / GitHub 首页整理
+
+本次目标:
+
+- 将根目录 `README.md` 从内部工作区交接说明改写为更正式的产品 README。
+- 突出 ClockLink Smart Clock Terminal 的产品定位、功能亮点、下载入口、架构、快速使用和验证状态。
+- 保持当前项目边界真实，不把尚未完成的 bitstream 生成和 Nexys A7 板级实测写成已完成。
+
+完成内容:
+
+- 重写根目录 README 标题和开篇说明，明确本仓库包含 Vivado FPGA 工程、ClockLink Studio 上位机、协议文档、仿真资源和发行流程。
+- 新增 `v1.0.0` Release 页面和 Windows ZIP 下载入口。
+- 按产品 README 结构整理 `Overview / Download / Highlights / System Architecture / ClockLink Studio / FPGA Project / Hardware Connections / Protocol Compatibility / Verification Status / Repository Layout / Documentation`。
+- 在 README 中明确当前首版协议仅支持可打印 ASCII，Unicode/中文消息不属于当前 FPGA 协议和 OLED 字库范围。
+- 在 README 中保留已知限制：最新 ClockLink 改动后尚未重新生成 bitstream，Nexys A7 USB-UART/COMM、OLED、ADT7420、蜂鸣器和完整提醒流程仍需板级验证。
+- 未修改 HDL、XDC、PC 软件代码或 Release workflow。
+
+修改文件:
+
+- `README.md`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- `git diff --check`
+- `git status -sb`
+
+检查结果:
+
+- `git diff --check` 未发现空白错误，仅有 Git LF/CRLF 转换提示。
+- `git status -sb` 显示仅 `README.md` 和 `docs/AGENT_WORKLOG.md` 为本次修改；未跟踪目录 `PPT/` 和 `贡献表/` 未纳入本次改动。
+
+已知问题:
+
+- 本次为文档改写，不重新运行 Vivado、XSim、pytest 或重新打包 Release。
+- 本地未跟踪目录 `PPT/` 和 `贡献表/` 保持不变，不纳入本次 README 整理。
+
+下一步建议:
+
+- 校验 README diff 后提交并推送到 `origin/main`，让 GitHub 首页更新为产品化说明。

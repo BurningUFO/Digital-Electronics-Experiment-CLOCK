@@ -1,113 +1,187 @@
-# CLOCK AMD Workspace
+# ClockLink Smart Clock Terminal
 
-这个目录是当前 `CLOCK` 项目的唯一最终工作区。
+ClockLink Smart Clock Terminal is a Nexys A7 FPGA smart clock system with a dedicated Windows PC companion app. It extends a traditional multi-function digital clock into a UART-connected terminal that can display messages, synchronize time, and control alarms, schedules, and countdowns from ClockLink Studio.
 
-今后所有代码修改、Vivado 打开、上板验证和文档同步，都以本目录为准，不再把外层旧副本或其他平行目录当作主线。
+This repository contains the complete Vivado hardware project, the ClockLink Studio Python/Tkinter application, protocol documentation, simulation assets, and release packaging workflow.
 
-## 工程入口
+## Overview
 
-- Vivado 工程：`clock_amd.xpr`
-- 顶层文件：`clock_amd.srcs/sources_1/new/clock_amd_top.v`
-- 主线集成：`clock_amd.srcs/sources_1/new/clock.v`
-- 约束文件：`clock_amd.srcs/constrs_1/new/clock_amd.xdc`
-- 综合检查脚本：`scripts/run_phase_synth_check.tcl`
+| Item | Description |
+| --- | --- |
+| FPGA platform | Digilent Nexys A7 100T |
+| FPGA toolchain | AMD Vivado |
+| PC application | ClockLink Studio for Windows |
+| Communication link | USB-UART, `115200 8N1` |
+| Clock modes | `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` |
+| Display outputs | 8-digit seven-segment display, LEDs, buzzer, external SSD1306 OLED |
+| Release version | `v1.0.0` |
 
-## 当前功能
+## Download
 
-1. `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` 七个模式已接入统一 UI。
-2. `SW0=0` 为浏览层，`SW0=1` 为设置层。
-3. 八位数码管按 `模式 / 状态 / HH / MM / SS` 或当前模式数据统一显示。
-4. `CLOCK + SW0` 支持月、日、星期设置，供 OLED 状态副屏使用。
-5. `HOUR` 支持 12/24 小时显示格式切换，不改变内部 24 小时计时和事件比较。
-6. `ALARM` 支持 8 槽位、LED0~LED7 状态提示、pending 事件和闹钟贪睡。
-7. `COUNT` 支持 `HH:MM:SS` 编辑、启动、停止和到零提醒。
-8. `SCHED` 支持 8 个固定计划点、槽位开关、LED 指示和计划提醒。
-9. `notification_ctrl` 统一仲裁倒计时、闹钟和计划提醒，并作为蜂鸣器唯一驱动源。
-10. 整点报时已接入蜂鸣器链路，在正常走时进入 `HH:00:00` 时输出两段短蜂鸣；不占用 OLED 提醒弹窗。
-11. OLED 为状态副屏基础版，显示日期、温度、最近计划、最近闹钟、倒计时状态和提醒弹窗；旧三模式滑动动画已移除。
-12. OLED 字库已覆盖完整可打印 ASCII `0x20..0x7E`，COMM 消息小写字母和常见标点可独立显示；Unicode/中文仍不属于当前 UART 协议和 FPGA 字库范围。
-13. ADT7420 温度读取模块已接入顶层 `TMP_SCL / TMP_SDA`，板级温度读数尚未实测。
-14. ClockLink Studio USB-UART 通信扩展已完成协议库、mock PC 软件、COMM 模式、UART、消息缓存、预设回复、时间同步、闹钟/日程/倒计时直接控制的首版集成。
+The Windows package is distributed through GitHub Releases rather than committed as a binary file.
 
-## 当前交互规则
+- Release page: <https://github.com/BurningUFO/Digital-Electronics-Experiment-CLOCK/releases/tag/v1.0.0>
+- Windows ZIP: <https://github.com/BurningUFO/Digital-Electronics-Experiment-CLOCK/releases/download/v1.0.0/ClockLinkStudio-v1.0.0-win64.zip>
 
-模式顺序：
+After extracting the ZIP, run `ClockLinkStudio.exe`. Mock mode works without FPGA hardware. Serial mode requires a Nexys A7 programmed with the ClockLink UART firmware.
 
-`CLOCK -> TIME -> ALARM -> HOUR -> COUNT -> SCHED -> COMM -> CLOCK`
+## Highlights
 
-浏览层，`SW0=0`：
+- Seven-mode FPGA clock UI with unified browsing and setting layers.
+- `CLOCK` date and weekday editing for the OLED status panel.
+- `TIME` manual time setting and PC-driven time synchronization.
+- `ALARM` with 8 slots, LED state indication, pending alerts, and snooze flow.
+- `COUNT` countdown editing, start/stop control, and completion notification.
+- `SCHED` with 8 fixed schedule points and schedule reminders.
+- `HOUR` mode for 12/24-hour display switching while internal time stays 24-hour.
+- `COMM` mode for USB-UART messaging, message browsing, OLED display, and preset replies.
+- ClockLink Studio GUI for connection testing, message sending, time sync, alarm control, schedule control, and countdown control.
+- Mock transport for software demos and tests without hardware.
 
-1. `BTNL / BTNR`：切换模式。
-2. `COUNT` 模式下 `BTNU` 启动或继续倒计时，`BTND` 停止倒计时。
-3. `COMM` 模式下 `SW0-SW15` 查看最近 16 条消息，`BTNU/BTND` 滚动消息，`BTNC` 切换查看/回复，`BTNR` 发送预设回复。
-4. `BTNC` 不再负责进入编辑层，普通状态下只作为当前模式的上下文确认键。
+## System Architecture
 
-设置层，`SW0=1`：
+```text
+ClockLink Studio
+  |  USB-UART, 115200 8N1
+  v
+comm_ctrl.v
+  |-- protocol_parser.v / protocol_builder.v
+  |-- message_store.v / preset_reply_rom.v
+  |-- uart_rx.v / uart_tx.v
+  v
+clock.v
+  |-- time_core.v / date_core.v
+  |-- alarm_ctrl.v / schedule_ctrl.v / countdown_ctrl.v
+  |-- notification_ctrl.v
+  |-- display_ctrl.v / oled_ui_display.v
+  v
+Nexys A7 display, LED, buzzer, OLED, ADT7420
+```
 
-1. `BTNL / BTNR`：切换字段或槽位。
-2. `BTNU / BTND`：修改当前字段、槽位或开关值。
-3. `BTNC`：用于上下文确认或开关切换，例如 ALARM/SCHED 使能切换、HOUR 格式切换。
+The FPGA side keeps the original clock feature set and adds a resource-conscious communication layer. The PC side uses the same ClockLink frame format in mock and serial modes, so software functions can be validated before connecting real hardware.
 
-提醒激活时：
+## ClockLink Studio
 
-1. 普通模式切换和设置操作会被锁定。
-2. `BTNC` 优先作为提醒确认 / 消音。
-3. 闹钟提醒下，方向键用于贪睡选择。
+ClockLink Studio is the PC control surface for the FPGA clock terminal.
 
-## 当前验证结果
+| Area | Capability |
+| --- | --- |
+| Connect | `HELLO`, `PING`, `STATUS`, time sync, time query, serial/mock connection |
+| Messaging | Send printable ASCII messages to FPGA, display communication log, receive preset replies |
+| Alarm | Read/write 8 alarm slots |
+| Schedule | Read/write 8 schedule slots |
+| Countdown | Set, start, stop, and query countdown state |
+| Demo mode | Full mock transport for presentation and automated tests |
 
-1. `xvlog` 全源语法检查通过。
-2. `xelab clock_amd_top` 顶层展开通过。
-3. `xvlog` 全源语法检查通过。
-4. Phase 8 通信回归通过：`tb_comm_ctrl_control/time/msg/reply` 均输出 `PASS`。
-5. `tb_notification_hourly_chime` 和 `tb_oled_glyph` 针对整点报时与 OLED ASCII 字库通过聚焦仿真。
-6. PC 软件 `python -m pytest` 最近记录通过，17 个测试全部通过。
-7. 最新 `vivado -mode batch -source scripts/run_phase_synth_check.tcl` 综合检查通过，时序：`WNS=+1.779ns`，`TNS=0.000ns`，失败端点 `0`。
-8. 尚未生成 bitstream。
-9. 尚未进行 Nexys A7 100T 板级 USB-UART/COMM 实测。
+Run from source:
 
-## 目录约定
+```powershell
+cd software\clocklink_studio
+python main.py --mock gui
+python main.py --port COM5 gui
+```
 
-- `clock_amd.srcs/sources_1/new/`：唯一有效 HDL 源文件目录
-- `clock_amd.srcs/constrs_1/new/`：唯一有效约束目录
-- `scripts/`：工程维护和检查脚本
-- `docs/`：当前有效说明文档
-- `software/clocklink_studio/`：ClockLink Studio 上位机源码、测试、PyInstaller 配置和软件说明
-- `artifacts/tool-runs/`：本地 Vivado/XSim 运行产物归档，不作为主线源码
-- `artifacts/releases/`：本地软件发行 ZIP 输出目录，不作为源码提交
-- `HANDOFF.md`：给新 agent 的接手说明
-- `docs/AGENT_WORKLOG.md`：当前 ClockLink 阶段状态、检查结果和下一步
-- `docs/FINAL_DEMO_GUIDE.md`：ClockLink 最终演示流程
-- `docs/ClockLink_Studio_Release_Guide.md`：ClockLink Studio 打包和 GitHub Release 发行流程
+Run tests:
 
-## ClockLink Studio 软件发行
+```powershell
+cd software\clocklink_studio
+python -m pytest
+```
 
-ClockLink Studio 采用“源码进 Git、构建产物进 GitHub Release”的方式管理。
-
-本地构建 Windows 发行包：
+Build the Windows ZIP locally:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\package_clocklink_studio.ps1 -Version v1.0.0
 ```
 
-构建结果：
+## FPGA Project
+
+Open the Vivado project:
 
 ```text
-artifacts/releases/ClockLinkStudio-v1.0.0-win64.zip
+clock_amd.xpr
 ```
 
-推送 `v*` 标签会触发 GitHub Actions 自动构建并上传 Release 附件：
+Key files:
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0
+| Path | Purpose |
+| --- | --- |
+| `clock_amd.srcs/sources_1/new/clock_amd_top.v` | Nexys A7 top-level integration |
+| `clock_amd.srcs/sources_1/new/clock.v` | Main clock system integration |
+| `clock_amd.srcs/sources_1/new/comm_ctrl.v` | ClockLink UART communication controller |
+| `clock_amd.srcs/constrs_1/new/clock_amd.xdc` | Nexys A7 pin constraints |
+| `scripts/run_phase_synth_check.tcl` | Batch synthesis check script |
+
+Run the synthesis check:
+
+```powershell
+vivado -mode batch -source scripts\run_phase_synth_check.tcl
 ```
 
-## 使用方式
+Generate a bitstream in Vivado before programming the Nexys A7. The repository records synthesis and simulation status, but the latest ClockLink build still needs final bitstream generation and board-level validation.
 
-1. 打开 `clock_amd.xpr`
-2. 小改逻辑时先跑 `Run Synthesis` 或 `vivado -mode batch -source scripts/run_phase_synth_check.tcl`
-3. 需要上板时再跑 `Generate Bitstream`
-4. 下载到 Nexys A7 100T 验证
+## Hardware Connections
 
-如果修改了 HDL 或 `.xdc`，必须重新生成 bitstream 后再下载。
+| Interface | Nexys A7 signal | Usage |
+| --- | --- | --- |
+| USB-UART J6 | `UART_RXD=C4`, `UART_TXD=D4` | ClockLink Studio communication |
+| External OLED | `JB1/D14=SCL`, `JB2/F16=SDA` | SSD1306 status panel |
+| Temperature sensor | `TMP_SCL=C14`, `TMP_SDA=C15` | ADT7420 reading |
+| Buzzer | `JA1/C17` | Unified notifications and hourly chime |
+| Buttons/switches | Nexys A7 standard controls | Mode navigation and local setting |
+
+See `docs/工程模块使用说明.md` for the complete interaction and wiring reference.
+
+## Protocol Compatibility
+
+ClockLink uses ASCII frames:
+
+```text
+#SEQ|CMD|PAYLOAD*CS\n
+```
+
+Current implementation boundary:
+
+- UART: `115200, 8N1`.
+- Checksum: XOR over `SEQ|CMD|PAYLOAD`.
+- Message text: printable ASCII `0x20..0x7E`.
+- Unicode and Chinese message display are not part of the current FPGA protocol or OLED font set.
+- FPGA currently acknowledges the implemented command subset. `MSG_GET/MSG_DATA` remains unsupported on the FPGA side and returns `NACK`; the PC mock implements it for software demonstration.
+
+Protocol details are documented in `docs/UART_PROTOCOL.md`.
+
+## Verification Status
+
+| Area | Status |
+| --- | --- |
+| PC unit tests | `python -m pytest`: 17 tests passed |
+| PC release packaging | `ClockLinkStudio-v1.0.0-win64.zip` built and released |
+| COMM XSim regressions | `tb_comm_ctrl_control`, `tb_comm_ctrl_time`, `tb_comm_ctrl_msg`, `tb_comm_ctrl_reply` passed |
+| Focused XSim tests | `tb_notification_hourly_chime`, `tb_oled_glyph` passed |
+| Vivado synthesis check | Passed, `WNS=+1.779ns`, `TNS=0.000ns`, failed endpoints `0` |
+| Bitstream | Not regenerated after the latest ClockLink changes |
+| Board-level validation | Nexys A7 USB-UART/COMM, OLED, ADT7420, buzzer, and full alert flow still need physical validation |
+
+## Repository Layout
+
+```text
+clock_amd.srcs/                 Vivado HDL sources and constraints
+docs/                           Protocol, module, workflow, and release documents
+scripts/                        Synthesis and packaging scripts
+sim/                            XSim testbenches
+software/clocklink_studio/      ClockLink Studio source code and tests
+.github/workflows/              GitHub Actions release workflow
+artifacts/                      Local generated outputs, ignored by Git
+```
+
+Generated Vivado directories such as `.Xil/`, `clock_amd.cache/`, `clock_amd.hw/`, `clock_amd.runs/`, and `clock_amd.sim/` are not source files and should not be committed.
+
+## Documentation
+
+- `docs/工程模块使用说明.md` - module usage, UI rules, hardware mapping, and board test checklist.
+- `docs/UART_PROTOCOL.md` - ClockLink frame format and command reference.
+- `docs/ClockLink_Studio_PC_Software_Design.md` - PC software design.
+- `software/clocklink_studio/README.md` - ClockLink Studio developer guide.
+- `docs/ClockLink_Studio_Release_Guide.md` - packaging and GitHub Release workflow.
+- `docs/FINAL_DEMO_GUIDE.md` - final demonstration flow.
+- `HANDOFF.md` - project handoff notes for future maintainers.
