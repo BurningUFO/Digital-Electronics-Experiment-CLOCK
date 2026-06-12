@@ -3,6 +3,18 @@
 // Streaming parser for #SEQ|CMD|PAYLOAD*CS\n frames.
 // MSG_TX text is decoded while the frame body is received and only committed
 // after checksum validation, avoiding a wide dynamic BODY buffer.
+//
+// 中文说明：
+// 本模块负责把 UART 字节流解析成单拍命令 valid 和结构化字段。
+// 为了减少 FPGA 资源，第一版不构建完整 key-value 字典，而是按协议文档中
+// 固定字段顺序逐字符匹配。例如 TIME_SET 必须是：
+//   date=YYYY-MM-DD;time=HH:MM:SS;weekday=N
+//
+// 解析策略：
+// 1. ST_BODY 中边收 BODY 边计算 XOR 校验。
+// 2. 命令名采用并行 match_xxx 标志逐字符匹配。
+// 3. MSG_TX 正文 HEX 先解码到 100 字节暂存，校验通过后再逐字节提交给缓存。
+// 4. 任意格式/校验/长度错误都会输出 nack_valid 和错误码。
 module protocol_parser #(
     parameter integer MAX_BODY = 256
 )(
@@ -77,6 +89,7 @@ module protocol_parser #(
     output reg [3:0]   nack_err,
     output reg [15:0]  seq_ascii
 );
+    // 帧级状态机：等待起始符、接收 BODY、接收校验、等待换行、发出结果。
     localparam [2:0] ST_IDLE  = 3'd0;
     localparam [2:0] ST_BODY  = 3'd1;
     localparam [2:0] ST_CS_HI = 3'd2;
@@ -159,6 +172,7 @@ module protocol_parser #(
     reg time_set_error;
     reg control_error;
 
+    // 以下 helper 均保持组合逻辑很短，只做单字符或小范围 BCD 校验。
     function is_hex_char;
         input [7:0] ch;
         begin

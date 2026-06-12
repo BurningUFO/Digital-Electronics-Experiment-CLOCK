@@ -1,5 +1,10 @@
 from datetime import datetime
 
+"""MockTransport 行为测试。
+
+覆盖 mock FPGA 对连接、时间、消息、主动回复和倒计时语义的模拟结果。
+"""
+
 from protocol.codec import decode_frame, hex_to_ascii_text, parse_payload
 from protocol.commands import CommandBuilder
 from services.client import ClockLinkClient

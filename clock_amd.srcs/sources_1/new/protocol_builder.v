@@ -1,5 +1,17 @@
 `timescale 1ns / 1ps
 
+// -----------------------------------------------------------------------------
+// ClockLink 协议回复帧构造器。
+//
+// 输入为 comm_ctrl 锁存好的响应类型和业务字段，输出为 uart_tx 可消费的
+// tx_start/tx_data 字节流。帧格式固定为：
+//   #SEQ|CMD|PAYLOAD*CS\n
+//
+// 资源/时序约束：
+// - 帧长限制为 MAX_FRAME，当前业务回复都短于该长度。
+// - 构帧按响应类型拆成多个 ST_BUILD_xxx 状态，避免一个周期拼接过多字符。
+// - tx_buf 是短帧缓冲；发送阶段只按 send_index 顺序取字节。
+// -----------------------------------------------------------------------------
 module protocol_builder #(
     parameter integer MAX_FRAME = 128
 )(
@@ -182,6 +194,7 @@ module protocol_builder #(
         end
     endfunction
 
+    // append_raw 写入不参与校验的字符，如 #、*、校验 HEX 和换行。
     task append_raw;
         input [7:0] ch;
         begin
@@ -190,6 +203,7 @@ module protocol_builder #(
         end
     endtask
 
+    // append_body 写入 BODY 字符，同时累计 XOR 校验。
     task append_body;
         input [7:0] ch;
         begin
@@ -658,6 +672,7 @@ module protocol_builder #(
         end
     endtask
 
+    // 构帧公共头：写 #、SEQ、|、CMD、|，并开始计算 BODY 校验。
     task begin_frame;
         begin
             build_len = 9'd0;
@@ -669,6 +684,7 @@ module protocol_builder #(
         end
     endtask
 
+    // 构帧公共尾：追加 *CS\n，并把 build_len 固化为待发送长度。
     task finish_frame;
         begin
             append_raw("*");

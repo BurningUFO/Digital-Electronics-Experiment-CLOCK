@@ -1,3 +1,10 @@
+"""ClockLink mock FPGA。
+
+不连接开发板时，MockTransport 在本地模拟 FPGA 对协议命令的响应，
+用于 CLI、GUI 和单元测试。mock 行为尽量贴近当前 FPGA 已实现子集；
+少量软件演示功能（如 MSG_GET）会比 FPGA 当前实现更完整。
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -28,6 +35,11 @@ PRESET_REPLIES = [
 
 
 class MockTransport(BaseTransport):
+    """内存版 FPGA 状态机。
+
+    保存时间、消息、闹钟、日程和倒计时状态，并按命令名分派到 _handle_xxx。
+    """
+
     def __init__(self) -> None:
         now = datetime.now().replace(microsecond=0)
         self.mode = "CLOCK"
@@ -64,6 +76,7 @@ class MockTransport(BaseTransport):
         self.fpga_seq = 0xF0
 
     def transact(self, frame_line: str) -> str:
+        """解码 PC 帧、调用对应 handler，并返回一条完整响应帧。"""
         try:
             frame = decode_frame(frame_line)
         except FrameError as exc:
@@ -114,6 +127,7 @@ class MockTransport(BaseTransport):
         return True
 
     def mock_reply(self, slot: int = 0, reply: int = 0, timestamp: datetime | None = None) -> str:
+        """生成一条 FPGA 主动 REPLY 帧，用于演示/测试后台监听路径。"""
         if not 0 <= slot <= 15:
             raise ValueError("reply slot must be 0..15")
         if not 0 <= reply < len(PRESET_REPLIES):
@@ -184,6 +198,7 @@ class MockTransport(BaseTransport):
         )
 
     def _handle_MSG_TX(self, frame: Frame) -> str:
+        """保存 PC 消息；新消息插入 slot0，旧消息后移。"""
         payload = self._payload(frame)
         try:
             text = hex_to_ascii_text(payload["text"])

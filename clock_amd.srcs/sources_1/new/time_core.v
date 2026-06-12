@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 当前时间核心。
+//
+// 保存内部 24 小时制 HH:MM:SS BCD 值，支持三类更新来源：
+// 1. tick_1h 自动走时。
+// 2. TIME 设置层的按键增减。
+// 3. PC 通过 ClockLink TIME_SET 直接加载 BCD 时间。
+//
+// 优先级：PC 直接加载最高，其次按键校时，最后自动走时。
+// -----------------------------------------------------------------------------
 module time_core(
     input clk,
     input tick_1k,
@@ -28,6 +38,7 @@ module time_core(
     wire sec_wrap;
     wire min_wrap;
 
+    // 设置层冻结走时；只要本周期有手动/PC 调整，就不再执行自动加秒。
     assign tick_en  = tick_1h & ~freeze_run & ~pc_time_load_valid &
                       ~add_sec_pulse & ~dec_sec_pulse &
                       ~add_hour_pulse & ~dec_hour_pulse &

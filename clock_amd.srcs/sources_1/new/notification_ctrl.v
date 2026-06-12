@@ -1,3 +1,17 @@
+// -----------------------------------------------------------------------------
+// 统一提醒仲裁与蜂鸣器控制。
+//
+// 输入来源：
+// - 倒计时到零事件。
+// - 闹钟 pending 事件。
+// - 日程 pending 事件。
+// - 整点报时短蜂鸣。
+//
+// 输出行为：
+// 1. 倒计时/闹钟/日程提醒会设置 notify_active，OLED 显示弹窗并锁定普通 UI。
+// 2. 整点报时只输出两段短蜂鸣，不设置 notify_active，不显示弹窗。
+// 3. 若提醒和整点报时同时发生，提醒优先，整点短蜂鸣被覆盖。
+// -----------------------------------------------------------------------------
 module notification_ctrl(
     input  clk,
     input  rst,
@@ -63,6 +77,7 @@ module notification_ctrl(
     wire countdown_pending_next;
     wire hourly_chime_buzzer;
 
+    // 当前优先级：倒计时 > 闹钟 > 日程。保持固定可预测，避免同秒多事件乱序。
     function [1:0] highest_type;
         input countdown_pending;
         input alarm_pending;
@@ -168,6 +183,7 @@ module notification_ctrl(
         ((hourly_chime_ms_cnt < HOURLY_ON_MS) ||
          ((hourly_chime_ms_cnt >= HOURLY_SECOND_ON_MS) &&
           (hourly_chime_ms_cnt < (HOURLY_SECOND_ON_MS + HOURLY_ON_MS))));
+    // 提醒激活时蜂鸣器完全由提醒节奏驱动；无提醒时才允许整点报时输出。
     assign buzzer_out = selected_active ? reminder_buzzer_reg : hourly_chime_buzzer;
 
     always @(posedge clk or negedge rst) begin
@@ -192,6 +208,7 @@ module notification_ctrl(
             alarm_snooze_slot_index <= selected_slot;
             schedule_event_ack_pulse <= 1'b0;
 
+            // 闹钟提醒下方向键表示贪睡，BTNC 表示直接确认关闭。
             if (dismiss_current && (selected_type == TYPE_ALARM)) begin
                 if (snooze_current) begin
                     alarm_snooze_set_pulse <= 1'b1;

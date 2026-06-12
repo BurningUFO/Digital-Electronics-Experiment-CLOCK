@@ -1,3 +1,8 @@
+"""协议编解码单元测试。
+
+重点保护帧校验、payload 往返、坏校验拒绝以及消息正文 ASCII/HEX 限制。
+"""
+
 import pytest
 
 from protocol.codec import (

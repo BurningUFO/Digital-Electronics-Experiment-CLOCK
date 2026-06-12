@@ -1,3 +1,12 @@
+// -----------------------------------------------------------------------------
+// 8 槽位日程控制器。
+//
+// 日程槽包含 HH:MM:SS、type 和 enable。到点后产生 pending 事件，由
+// notification_ctrl 统一弹窗/蜂鸣/确认。
+//
+// SCHED 的手动槽位选择来自 SW[7:0]，但 clock.v 只在 SCHED 模式转发这些
+// 开关，避免 COMM 模式查看消息时误改日程选中槽。
+// -----------------------------------------------------------------------------
 module schedule_ctrl(
     input  clk,
     input  rst,
@@ -112,6 +121,7 @@ module schedule_ctrl(
 
     integer i;
 
+    // 开关多选时使用最低位作为当前日程槽。
     function [2:0] first_set_index;
         input [7:0] mask;
         begin

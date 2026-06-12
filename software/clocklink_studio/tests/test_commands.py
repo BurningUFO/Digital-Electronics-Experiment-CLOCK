@@ -1,3 +1,9 @@
+"""命令构造器测试。
+
+这些测试不仅检查命令存在，还保护 payload 字段顺序，因为 FPGA 第一版
+解析器按固定顺序逐字符解析部分命令。
+"""
+
 from datetime import datetime
 
 import pytest

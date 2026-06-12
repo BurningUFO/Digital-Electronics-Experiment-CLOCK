@@ -1,3 +1,14 @@
+// -----------------------------------------------------------------------------
+// 统一 UI 控制层。
+//
+// 职责：
+// 1. 对五个板载按键做消抖并输出单周期 pulse。
+// 2. 管理 CLOCK -> TIME -> ALARM -> HOUR -> COUNT -> SCHED -> COMM 的模式环。
+// 3. 根据 SW0 或 SCHED 专用开关规则生成 setting_active。
+// 4. 在提醒激活时冻结普通交互，使 BTNC/方向键优先服务提醒确认和贪睡。
+//
+// COMM 特殊约定：COMM 模式不进入普通设置层，SW0-SW15 全部留给消息槽选择。
+// -----------------------------------------------------------------------------
 module ui_ctrl(
     input  clk,
     input  tick_1k,
@@ -37,6 +48,10 @@ module ui_ctrl(
     reg [8:0] blink_cnt;
     reg setting_active_d;
 
+    // 设置层进入规则：
+    // - 普通模式使用 SW0。
+    // - SCHED 模式沿用旧交互，SW[7:0]/SW15 同时承担槽位和类型页选择。
+    // - COMM 模式强制为浏览层，避免 SW0 被解释为设置开关。
     assign setting_active = (mode_state == MODE_COMM) ? 1'b0 :
                             (mode_state == MODE_SCHEDULE) ? ((|sw[7:0]) | sw[15]) : sw[0];
     assign blink_active = interaction_lock |
@@ -44,6 +59,7 @@ module ui_ctrl(
                           (mode_state == MODE_ALARM) |
                           (mode_state == MODE_SCHEDULE);
 
+    // 浏览层右键模式顺序。
     function [2:0] next_mode;
         input [2:0] mode_in;
         begin
@@ -59,6 +75,7 @@ module ui_ctrl(
         end
     endfunction
 
+    // 浏览层左键模式顺序。
     function [2:0] prev_mode;
         input [2:0] mode_in;
         begin
@@ -74,6 +91,7 @@ module ui_ctrl(
         end
     endfunction
 
+    // 各模式设置层字段数量。字段从 0 开始编号。
     function [2:0] max_field_index;
         input [2:0] mode_in;
         begin
@@ -146,11 +164,13 @@ module ui_ctrl(
             confirm_pulse   <= 1'b0;
             setting_active_d <= setting_active;
 
+            // 提醒激活时 BTNC 由 notification_ctrl 使用，普通 confirm 不再发出。
             if (!interaction_lock && btn_center_pulse) begin
                 confirm_pulse <= 1'b1;
             end
 
             if (interaction_lock) begin
+                // 提醒期间普通 UI 不切模式、不换字段、不改数值。
             end else if (setting_active != setting_active_d) begin
                 field_index <= 3'd0;
             end else if (setting_active) begin

@@ -1,5 +1,22 @@
 `timescale 1ns / 1ps
 
+// -----------------------------------------------------------------------------
+// ClockLink COMM 模式总控制器。
+//
+// 数据通路：
+//   USB-UART RX -> uart_rx -> protocol_parser -> 命令分发
+//   命令分发 -> message_store / PC 直接控制脉冲 / protocol_builder -> uart_tx
+//
+// UI 通路：
+//   SW0-SW15 选择最近 16 条消息，BTNU/BTND 滚动正文；
+//   BTNC 在“查看消息”和“预设回复”之间切换；
+//   回复模式下 BTNU/BTND 选择 ROM 文本，BTNR 主动发送 REPLY 帧。
+//
+// 设计边界：
+// - 当前 FPGA 只实现可打印 ASCII 文本；中文/Unicode 不在本模块处理。
+// - MSG_GET 协议保留，但 FPGA 端当前返回 unsupported，避免宽消息回传路径。
+// - 所有 PC 写入接口都输出一拍 valid/pulse，不模拟板上按键。
+// -----------------------------------------------------------------------------
 module comm_ctrl #(
     parameter integer CLK_FREQ  = 100_000_000,
     parameter integer BAUD_RATE = 115_200
@@ -253,6 +270,8 @@ module comm_ctrl #(
 
     assign comm_window_base_index = {comm_scroll_line, 4'b0000};
 
+    // COMM 状态既用于数码管右四位，也用于 OLED 状态页和 STATUS 回复。
+    // 错误状态保持一个短暂窗口，未读消息优先显示 MSG，其次显示发送忙/已连接/断开。
     assign comm_status = (error_timer_ms != 12'd0) ? COMM_STATUS_ERR :
                          (comm_unread_count != 5'd0) ? COMM_STATUS_MSG :
                          (response_pending || builder_busy) ? COMM_STATUS_WAIT :
@@ -299,6 +318,7 @@ module comm_ctrl #(
     assign pc_count_sec_ten_bcd = parser_count_sec_ten_bcd;
     assign pc_count_sec_unit_bcd = parser_count_sec_unit_bcd;
 
+    // 多个开关同时打开时选择最低位；SW0 始终代表最新消息 slot0。
     function [3:0] lowest_switch_slot;
         input [15:0] switches;
         begin
@@ -322,6 +342,7 @@ module comm_ctrl #(
         end
     endfunction
 
+    // 主动 REPLY 使用 FPGA 本地序号 F0..FF 循环，需要把 nibble 转成 ASCII。
     function [7:0] hex_char;
         input [3:0] value;
         begin
@@ -339,6 +360,7 @@ module comm_ctrl #(
         .reply_len(comm_reply_text_len)
     );
 
+    // OLED 每屏显示 4 行 x 16 字符。正文超过 64 字符时允许滚动行号。
     function [2:0] max_scroll_for_len;
         input [6:0] len;
         reg [3:0] line_count;
@@ -352,6 +374,7 @@ module comm_ctrl #(
         end
     endfunction
 
+    // UART 字节接收：只输出 rx_valid/rx_data，不理解上层帧格式。
     uart_rx #(
         .CLK_FREQ(CLK_FREQ),
         .BAUD_RATE(BAUD_RATE)
@@ -364,6 +387,7 @@ module comm_ctrl #(
         .rx_busy(rx_busy)
     );
 
+    // UART 字节发送：protocol_builder 逐字节喂入 tx_start/tx_data。
     uart_tx #(
         .CLK_FREQ(CLK_FREQ),
         .BAUD_RATE(BAUD_RATE)
@@ -377,6 +401,7 @@ module comm_ctrl #(
         .tx_done(tx_done)
     );
 
+    // 流式协议解析器。校验通过后才发出具体命令 valid。
     protocol_parser u_protocol_parser (
         .clk(clk),
         .rst(rst),
@@ -450,6 +475,7 @@ module comm_ctrl #(
         .seq_ascii(parser_seq_ascii)
     );
 
+    // 最近 16 条消息缓存。正文窗口按当前 slot 和滚动行分时重建，避免大 mux。
     message_store u_message_store (
         .clk(clk),
         .rst(rst),
@@ -473,6 +499,7 @@ module comm_ctrl #(
         .unread_count(comm_unread_count)
     );
 
+    // 回复帧构造器。内部先拼好短帧缓冲，再逐字节通过 uart_tx 发送。
     protocol_builder u_protocol_builder (
         .clk(clk),
         .rst(rst),
@@ -536,6 +563,7 @@ module comm_ctrl #(
         .done(builder_done)
     );
 
+    // COMM 模式本地 UI 状态：消息选择、滚动行和预设回复选择。
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
             comm_selected_slot <= 4'd0;
@@ -566,6 +594,12 @@ module comm_ctrl #(
         end
     end
 
+    // 命令分发与响应调度。
+    //
+    // 同一时刻只允许一个 protocol_builder 输出帧：
+    // 1. 若 builder 空闲，response_pending 会启动构帧。
+    // 2. 若收到新命令但发送器正忙，返回 TX_BUSY，且不产生任何写入副作用。
+    // 3. 写命令先检查 busy，再输出 PC 直接控制脉冲，保证失败响应不改状态。
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
             connected <= 1'b0;
@@ -682,6 +716,7 @@ module comm_ctrl #(
                 response_nack_err_reg <= 4'd0;
                 response_pending <= 1'b1;
             end else if (parser_time_set_valid) begin
+                // TIME_SET 同时加载时间和日期；具体 BCD 字段由 parser 输出。
                 connected <= 1'b1;
                 pc_time_load_valid <= 1'b1;
                 pc_date_load_valid <= 1'b1;
@@ -767,6 +802,7 @@ module comm_ctrl #(
                 store_response_seq <= parser_seq_ascii;
                 store_response_pending <= 1'b1;
             end else if (parser_msg_get_valid) begin
+                // 协议保留 MSG_GET，但 FPGA 当前不做 100 字符消息宽帧回传。
                 connected <= 1'b1;
                 response_kind_reg <= RESP_NACK;
                 response_seq_reg <= parser_seq_ascii;
@@ -781,6 +817,7 @@ module comm_ctrl #(
                 clear_response_pending <= 1'b1;
             end else if (mode_comm && comm_reply_mode && comm_message_valid && btn_right_pulse &&
                          !reply_response_pending && !response_pending && !builder_busy) begin
+                // FPGA 主动回复不是 PC 请求的响应，因此使用本地 F0 起始序号。
                 reply_response_seq <= {hex_char(reply_seq_counter[7:4]), hex_char(reply_seq_counter[3:0])};
                 reply_seq_counter <= reply_seq_counter + 1'b1;
                 reply_slot_reg <= comm_selected_slot;

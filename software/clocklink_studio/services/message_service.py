@@ -1,7 +1,11 @@
+"""消息业务服务封装。"""
+
 from .client import ClockLinkClient
 
 
 class MessageService:
+    """发送、读取和清除 ClockLink 消息。"""
+
     def __init__(self, client: ClockLinkClient) -> None:
         self.client = client
 

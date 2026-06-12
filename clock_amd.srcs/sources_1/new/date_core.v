@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 软日期核心。
+//
+// 保存年份、月份、日期和星期，供 OLED 状态副屏与 TIME_GET 使用。
+// CLOCK 设置层只能手动调月/日/星期；PC TIME_SET 可一次性加载完整日期。
+//
+// 当前简化：
+// - 月份最大天数按平年处理，2 月固定 28 天。
+// - 自动跨天只推进月/日/星期，不自动处理跨年年份递增。
+// -----------------------------------------------------------------------------
 module date_core(
     input clk,
     input rst,
@@ -52,6 +62,7 @@ module date_core(
                             (day_reg >= 6'd10) ? (day_reg - 6'd10) : day_reg[3:0];
     assign weekday        = weekday_reg;
 
+    // 平年月份天数表。
     function [5:0] month_max_day;
         input [3:0] month_in;
         begin
@@ -143,6 +154,7 @@ module date_core(
         end
     endfunction
 
+    // PC 日期加载优先于手动设置和自动跨天。
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
             month_reg   <= 4'd1;

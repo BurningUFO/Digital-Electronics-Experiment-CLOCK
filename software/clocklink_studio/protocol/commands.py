@@ -1,3 +1,9 @@
+"""面向 PC 业务操作的命令帧构造器。
+
+字段顺序不是随意的：FPGA 第一版解析器为了节省资源，部分命令按固定顺序
+逐字符解析，所以这里的 dict 插入顺序由测试保护。
+"""
+
 from datetime import datetime
 from typing import Optional
 
@@ -20,6 +26,8 @@ def _date_time_payload(value: Optional[datetime] = None) -> dict[str, object]:
 
 
 class Sequence:
+    """单 outstanding 命令使用的 8-bit 循环序号。"""
+
     def __init__(self, start: int = 0) -> None:
         self._value = start & 0xFF
 
@@ -29,6 +37,8 @@ class Sequence:
 
 
 class CommandBuilder:
+    """把高层操作封装为符合 UART_PROTOCOL.md 的完整帧字符串。"""
+
     def __init__(self, start_seq: int = 0) -> None:
         self.sequence = Sequence(start_seq)
 
@@ -87,6 +97,7 @@ class CommandBuilder:
         return self.frame("COUNT_STATUS")
 
     def msg_tx(self, text: str, timestamp: Optional[datetime] = None) -> str:
+        """发送消息给 FPGA。正文在 payload 中用 HEX 承载，避免分隔符冲突。"""
         return self.frame(
             "MSG_TX",
             {

@@ -1,3 +1,12 @@
+// -----------------------------------------------------------------------------
+// 倒计时控制器。
+//
+// 保存倒计时 HH:MM:SS，支持设置层按键编辑、浏览层启动/停止，以及
+// ClockLink PC 直接 COUNT_SET/START/STOP 控制。
+//
+// 协议语义：COUNT_SET 只加载新时间并停止倒计时；若 PC 需要立即运行，
+// 必须随后发送 COUNT_START。
+// -----------------------------------------------------------------------------
 module countdown_ctrl(
     input  clk,
     input  rst,
@@ -35,6 +44,7 @@ module countdown_ctrl(
     wire borrow_minute;
     wire borrow_hour;
 
+    // 非零判断用于禁止 00:00:00 被启动。
     assign countdown_nonzero = (|hour_ten_bcd) |
                                (|hour_unit_bcd) |
                                (|min_ten_bcd) |
@@ -57,6 +67,7 @@ module countdown_ctrl(
                                (min_unit_bcd == 4'd0);
     assign countdown_done_pulse = countdown_run & tick_1h & countdown_one;
 
+    // 运行状态优先响应 PC 控制，再响应板上按键控制。
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
             countdown_run <= 1'b0;

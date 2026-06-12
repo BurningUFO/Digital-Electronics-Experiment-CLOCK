@@ -1,3 +1,15 @@
+// -----------------------------------------------------------------------------
+// 多功能时钟主线集成模块。
+//
+// 本模块是工程内部的“总线枢纽”，自身尽量不实现复杂业务算法，而是：
+// 1. 接收 UI 层产生的模式、字段、增减和确认脉冲。
+// 2. 把脉冲分发到 TIME / ALARM / HOUR / COUNT / SCHED 等功能模块。
+// 3. 接入 ClockLink COMM 控制器，把 PC 直接写入接口连接到时间、闹钟、
+//    日程和倒计时模块，避免通过模拟按键同步数据。
+// 4. 汇总提醒事件给 notification_ctrl，并把显示数据交给 display_ctrl/OLED。
+//
+// 注意：tick_1h 名称沿用旧工程，当前实际含义是 1Hz 走时脉冲。
+// -----------------------------------------------------------------------------
 module clock(
     input clk,
     input tick_1k,
@@ -281,6 +293,7 @@ module clock(
     reg [3:0] next_schedule_min_ten_public_reg;
     reg [3:0] next_schedule_min_unit_public_reg;
 
+    // 由 tick_1k 进一步得到 1Hz 走时脉冲，供时间、倒计时和提醒计秒使用。
     clk_ring u_clk_div(
         .clk(clk),
         .tick_1k(tick_1k),
@@ -288,6 +301,7 @@ module clock(
         .tick_1h(tick_1h)
     );
 
+    // 统一 UI 控制层：负责按键消抖、模式切换、设置层字段移动和提醒锁定。
     ui_ctrl u_ui_ctrl(
         .clk(clk),
         .tick_1k(tick_1k),
@@ -314,6 +328,7 @@ module clock(
         .btn_center_pulse(btn_center_pulse_raw)
     );
 
+    // 模式译码统一放在主线中，便于后续所有子模块共享同一套模式判断。
     assign mode_time_set     = (mode_state == 3'b001);
     assign mode_alarm        = (mode_state == 3'b010);
     assign mode_hour_format  = (mode_state == 3'b011);
@@ -373,14 +388,18 @@ module clock(
     assign date_weekday_dec_pulse      = (mode_state == 3'b000) & setting_active & (field_index == 3'd2) & value_dec_pulse;
     assign hour_format_toggle_pulse    = mode_hour_format & setting_active &
                                           (value_inc_pulse | value_dec_pulse | confirm_pulse);
+    // TIME 设置层冻结正常走时；手动校时和 PC 校时同样优先于自动加秒。
     assign time_auto_tick_en           = tick_1h & ~(mode_time_set & setting_active) &
                                           ~time_sec_inc_pulse & ~time_sec_dec_pulse &
                                           ~time_hour_inc_pulse & ~time_hour_dec_pulse &
                                           ~time_min_inc_pulse & ~time_min_dec_pulse;
+    // 日期只在 23:59:59 -> 00:00:00 这一次跨天边界推进。
     assign day_tick_pulse              = time_auto_tick_en &
                                           (hour_t_time == 4'd2) & (hour_u_time == 4'd3) &
                                           (min_t_time == 4'd5) & (min_u_time == 4'd9) &
                                           (sec_t_time == 4'd5) & (sec_u_time == 4'd9);
+    // 整点报时在任意 HH:59:59 -> (HH+1):00:00 前产生一拍请求；
+    // 真正的蜂鸣节奏由 notification_ctrl 产生，且会被闹钟/倒计时/日程提醒覆盖。
     assign hourly_chime_pulse          = time_auto_tick_en &
                                           (min_t_time == 4'd5) & (min_u_time == 4'd9) &
                                           (sec_t_time == 4'd5) & (sec_u_time == 4'd9);
@@ -430,6 +449,10 @@ module clock(
                                           mode_schedule ? schedule_led_mask :
                                           8'b0000_0000;
 
+    // ClockLink 通信控制器：
+    // - 解析 PC 发来的 ASCII UART 帧。
+    // - 保存消息、发送预设回复。
+    // - 输出 PC 直接写入脉冲到 TIME/ALARM/SCHED/COUNT。
     comm_ctrl u_comm_ctrl(
         .clk(clk),
         .tick_1k(tick_1k),
@@ -574,6 +597,7 @@ module clock(
         end
     end
 
+    // 当前时间核心。PC TIME_SET 直接加载 BCD 字段，优先级高于按键和自动走时。
     time_core u_time_core(
         .clk(clk),
         .tick_1k(tick_1k),
@@ -601,6 +625,7 @@ module clock(
         .hour_ten_bcd(hour_t_time)
     );
 
+    // 日期核心保存年份/月/日/星期。自动跨天不处理闰年，PC 可周期性 TIME_SET 校准。
     date_core u_date_core(
         .clk(clk),
         .rst(rst),
@@ -651,6 +676,7 @@ module clock(
         .is_midnight_or_noon(time_is_midnight_or_noon)
     );
 
+    // 8 槽位闹钟控制器。PC 写槽会清除对应 pending/snooze/match 状态。
     alarm_ctrl u_alarm_ctrl(
         .clk(clk),
         .tick_1k(tick_1k),
@@ -722,6 +748,7 @@ module clock(
         .alarm_event_slot(alarm_event_slot)
     );
 
+    // 倒计时控制器。PC COUNT_SET 加载新值并停止，COUNT_START 再单独启动。
     countdown_ctrl u_countdown_ctrl(
         .clk(clk),
         .rst(rst),
@@ -753,6 +780,7 @@ module clock(
         .sec_unit_bcd(countdown_sec_unit)
     );
 
+    // 8 槽位日程控制器。COMM 与 SCHED 都使用开关，因此只在 SCHED 模式转发 SW[7:0]。
     schedule_ctrl u_schedule_ctrl(
         .clk(clk),
         .rst(rst),
@@ -820,6 +848,8 @@ module clock(
         .schedule_event_slot(schedule_event_slot)
     );
 
+    // 统一提醒仲裁：倒计时、闹钟、日程提醒共用同一个蜂鸣器输出；
+    // 整点报时作为非弹窗短蜂鸣叠加在无提醒时段。
     notification_ctrl u_notification_ctrl(
         .clk(clk),
         .rst(rst),
@@ -847,6 +877,7 @@ module clock(
         .schedule_event_ack_pulse(schedule_event_ack_pulse)
     );
 
+    // 八位数码管内容选择。该模块输出的是字符码，不直接处理七段管物理扫描。
     display_ctrl u_display_ctrl(
         .clk(clk),
         .rst(rst),

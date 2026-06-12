@@ -1,3 +1,5 @@
+"""真实 USB-UART 串口传输层。"""
+
 from __future__ import annotations
 
 import queue
@@ -10,6 +12,12 @@ from .base import BaseTransport
 
 
 class SerialTransport(BaseTransport):
+    """带后台读取线程的串口 transport。
+
+    transact 只返回与当前请求 SEQ 匹配的响应；如果读到其他 SEQ 的 REPLY/EVENT，
+    会先放入事件队列，供 GUI 通过 poll_event 显示。
+    """
+
     def __init__(self, port: str, baudrate: int = 115200, timeout: float = 1.0) -> None:
         try:
             import serial
@@ -25,6 +33,7 @@ class SerialTransport(BaseTransport):
         self._reader.start()
 
     def _read_loop(self) -> None:
+        """持续从串口读取完整行，放入接收队列。"""
         while not self._stop.is_set():
             try:
                 response = self._serial.readline()
@@ -36,12 +45,14 @@ class SerialTransport(BaseTransport):
                 self._rx_queue.put(response.decode("ascii", errors="replace"))
 
     def _seq_hex(self, frame_line: str) -> str | None:
+        """尽量解码帧序号；坏帧返回 None。"""
         try:
             return decode_frame(frame_line).seq_hex
         except FrameError:
             return None
 
     def transact(self, frame_line: str) -> str:
+        """发送命令并等待同 SEQ 响应，其他帧归类为主动事件。"""
         expected_seq = self._seq_hex(frame_line)
         deadline = time.monotonic() + self._command_timeout
 
@@ -63,6 +74,7 @@ class SerialTransport(BaseTransport):
         raise TimeoutError("serial response timeout")
 
     def poll_event(self) -> str | None:
+        """优先取主动事件队列；没有时也检查是否有未匹配的串口帧。"""
         for source in (self._event_queue, self._rx_queue):
             try:
                 return source.get_nowait()

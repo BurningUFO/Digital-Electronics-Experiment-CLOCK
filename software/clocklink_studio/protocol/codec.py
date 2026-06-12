@@ -1,3 +1,9 @@
+"""ClockLink ASCII 帧编解码。
+
+帧格式固定为 #SEQ|CMD|PAYLOAD*CS\n。这里负责通用结构校验、XOR 校验、
+payload 序列化/解析，以及消息正文 ASCII <-> HEX 转换。
+"""
+
 import re
 from typing import Mapping, Union
 
@@ -12,6 +18,7 @@ HEX_RE = re.compile(r"^[0-9A-Fa-f]*$")
 
 
 class FrameError(ValueError):
+    """协议帧格式、校验或编码不合法。"""
     pass
 
 
@@ -34,6 +41,7 @@ def _validate_payload_text(payload: str) -> None:
 
 
 def serialize_payload(payload: PayloadInput) -> str:
+    """把 dict 或字符串 payload 转成协议要求的 key=value;key=value 文本。"""
     if payload is None:
         return ""
     if isinstance(payload, str):
@@ -57,6 +65,7 @@ def serialize_payload(payload: PayloadInput) -> str:
 
 
 def parse_payload(payload: str) -> dict[str, str]:
+    """解析 key=value payload。重复 key 后值覆盖前值，保持简单行为。"""
     if payload == "":
         return {}
     _validate_payload_text(payload)
@@ -73,6 +82,7 @@ def parse_payload(payload: str) -> dict[str, str]:
 
 
 def encode_frame(seq: int, cmd: str, payload: PayloadInput = None) -> str:
+    """编码完整帧并自动追加 XOR 校验和换行。"""
     if not 0 <= seq <= 0xFF:
         raise FrameError("seq must be 0..255")
     cmd_text = cmd.upper()
@@ -87,6 +97,7 @@ def encode_frame(seq: int, cmd: str, payload: PayloadInput = None) -> str:
 
 
 def decode_frame(data: Union[str, bytes]) -> Frame:
+    """解码完整帧；任何结构或校验错误都会抛 FrameError。"""
     if isinstance(data, bytes):
         try:
             text = data.decode("ascii")
@@ -127,6 +138,7 @@ def decode_frame(data: Union[str, bytes]) -> Frame:
 
 
 def ascii_text_to_hex(text: str) -> str:
+    """把待发送消息转成 HEX；限制为 100 个可打印 ASCII 字符。"""
     _validate_ascii(text, "message text")
     if len(text) > MAX_MESSAGE_LENGTH:
         raise FrameError("message text exceeds 100 characters")
@@ -138,6 +150,7 @@ def ascii_text_to_hex(text: str) -> str:
 
 
 def hex_to_ascii_text(hex_text: str) -> str:
+    """把 FPGA/Mock 返回的 HEX 正文还原成可打印 ASCII。"""
     if len(hex_text) % 2 != 0 or not HEX_RE.match(hex_text):
         raise FrameError("message text is not valid HEX")
     raw = bytes.fromhex(hex_text)

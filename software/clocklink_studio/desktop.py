@@ -1,3 +1,9 @@
+"""ClockLink Studio Windows 桌面启动器。
+
+该入口用于 PyInstaller 打包后的双击启动场景：
+先让用户选择 mock 或串口，再打开 Tkinter 主控制台。
+"""
+
 from __future__ import annotations
 
 import sys
@@ -56,6 +62,7 @@ COLORS = {
 
 
 def available_ports() -> list[str]:
+    """枚举当前系统可见串口；pyserial 不可用时返回空列表。"""
     try:
         from serial.tools import list_ports
     except Exception:
@@ -64,6 +71,7 @@ def available_ports() -> list[str]:
 
 
 def self_test() -> int:
+    """打包后自测入口，用 mock ping 验证程序基本可启动。"""
     client = ClockLinkClient(MockTransport())
     try:
         response = client.ping()
@@ -73,6 +81,7 @@ def self_test() -> int:
 
 
 def choose_client() -> ClockLinkClient | None:
+    """启动选择窗口。返回已创建的 ClockLinkClient，取消时返回 None。"""
     import tkinter as tk
     from tkinter import font as tkfont
     from tkinter import messagebox, ttk

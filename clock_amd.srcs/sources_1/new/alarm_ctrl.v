@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 8 槽位闹钟控制器。
+//
+// 每个槽保存 HH:MM:SS 和 enable 状态，到点后进入 pending 队列。
+// notification_ctrl 负责实际蜂鸣和用户确认，本模块只维护事件、贪睡和最近闹钟。
+//
+// PC 直接写入：
+// - pc_alarm_write_valid 会直接覆盖指定槽位时间和开关。
+// - 写入同时清除该槽 pending、snooze 和 match，避免旧事件残留。
+// -----------------------------------------------------------------------------
 module alarm_ctrl(
     input  clk,
     input  tick_1k,
@@ -155,6 +165,7 @@ module alarm_ctrl(
 
     integer i;
 
+    // 以下增减函数保持 BCD 格式，小时范围固定 00..23。
     function [5:0] inc_hour;
         input [1:0] ten_in;
         input [3:0] unit_in;

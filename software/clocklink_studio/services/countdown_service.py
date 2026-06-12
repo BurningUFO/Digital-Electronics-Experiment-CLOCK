@@ -1,7 +1,11 @@
+"""倒计时业务服务封装。"""
+
 from .client import ClockLinkClient
 
 
 class CountdownService:
+    """倒计时设置、启动、停止和状态查询接口。"""
+
     def __init__(self, client: ClockLinkClient) -> None:
         self.client = client
 

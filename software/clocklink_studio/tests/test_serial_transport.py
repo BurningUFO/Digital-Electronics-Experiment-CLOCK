@@ -1,6 +1,12 @@
 import queue
 import sys
 import types
+"""SerialTransport 队列分流测试。
+
+真实串口会同时收到 PC 请求响应和 FPGA 主动 REPLY/EVENT，本测试用 FakeSerial
+验证非当前 SEQ 的帧会进入事件队列，而不会打断当前命令响应。
+"""
+
 import time
 
 from protocol.codec import encode_frame

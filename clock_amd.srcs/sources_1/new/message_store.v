@@ -3,6 +3,14 @@
 // Stores the 16 most recent PC messages. Logical slot 0 is the newest
 // message; physical storage uses a ring pointer so storing a new message does
 // not move 16 x 100 characters through a wide mux.
+//
+// 中文说明：
+// 逻辑 slot 与物理 RAM 槽位通过 head_slot 做映射。每来一条新消息，只移动
+// head 指针并写入新的物理槽，旧消息不整体搬移。
+//
+// OLED 只需要显示当前 slot 的 4 行 x 16 字符窗口，因此正文 RAM 采用
+// “同步读 + 逐字节重建窗口”的方式输出 64 字节窗口，避免 1600 字节正文
+// 通过组合大选择器直接进入 OLED 渲染路径。
 module message_store(
     input  wire        clk,
     input  wire        rst,
@@ -76,6 +84,7 @@ module message_store(
         end
     endgenerate
 
+    // 把用户看到的逻辑 slot0..15 映射到环形物理槽。
     function [3:0] logical_to_physical;
         input [3:0] logical_slot;
         begin
@@ -83,6 +92,7 @@ module message_store(
         end
     endfunction
 
+    // 每条消息最多 100 字符，16 条共 1600 字节。
     function [10:0] text_addr;
         input [3:0] phys_slot;
         input [6:0] char_index;
@@ -91,6 +101,7 @@ module message_store(
         end
     endfunction
 
+    // 当选择的消息槽或滚动基地址变化时，启动 64 字节窗口重建。
     task start_window_rebuild;
         begin
             selected_slot_d <= selected_slot;
@@ -109,6 +120,7 @@ module message_store(
         end
     endtask
 
+    // 正文 RAM 写入和窗口同步读独立出来，便于 Vivado 推断 Block RAM。
     always @(posedge clk) begin
         if (text_store_valid) begin
             text_mem[text_store_addr] <= store_char_ascii;
@@ -171,6 +183,7 @@ module message_store(
                 end
             end else begin
                 if (store_begin) begin
+                    // 新消息写入逻辑 slot0：物理 head 前移，旧逻辑 slot 自动后移。
                     head_slot <= next_head_slot;
                     write_slot <= next_head_slot;
                     valid_mem[next_head_slot] <= 1'b1;
@@ -228,6 +241,7 @@ module message_store(
                 if ((selected_slot != selected_slot_d) || (window_base_index != window_base_d)) begin
                     start_window_rebuild;
                 end else if (window_build_active) begin
+                    // 三阶段窗口重建：发起地址 -> 等待同步读 -> 写入窗口字节。
                     case (window_build_phase)
                         2'd0: begin
                             if (selected_valid_reg &&

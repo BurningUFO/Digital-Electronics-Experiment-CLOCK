@@ -1,7 +1,12 @@
 `timescale 1ns / 1ps
 
-// Fixed preset replies for COMM mode. Characters are stored with char 0 in
-// bits [7:0], char 1 in bits [15:8], and unused bytes padded with spaces.
+// -----------------------------------------------------------------------------
+// COMM 模式预设回复 ROM。
+//
+// 固定保存 8 条英文 ASCII 回复，供 FPGA 在回复模式下选择并发送 REPLY 帧。
+// 文本同时被 OLED 回复页面显示，因此长度和内容应保持在可打印 ASCII 范围内。
+// 字符存储约定：char0 位于 [7:0]，char1 位于 [15:8]，未使用字节填空格。
+// -----------------------------------------------------------------------------
 module preset_reply_rom(
     input  wire [2:0]  reply_index,
     output reg  [159:0] reply_ascii,

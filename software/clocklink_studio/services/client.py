@@ -1,3 +1,8 @@
+"""ClockLink 服务层统一客户端。
+
+上层 UI/CLI 调用这里的方法，不需要知道具体使用 mock 还是真实串口。
+"""
+
 from datetime import datetime
 
 from protocol.codec import decode_frame
@@ -7,11 +12,14 @@ from transport.base import BaseTransport
 
 
 class ClockLinkClient:
+    """把 CommandBuilder 和 Transport 组合成同步请求接口。"""
+
     def __init__(self, transport: BaseTransport, builder: CommandBuilder | None = None) -> None:
         self.transport = transport
         self.builder = builder or CommandBuilder()
 
     def request(self, frame_line: str) -> Frame:
+        """发送一帧并等待同序号响应，然后解码为 Frame。"""
         response_line = self.transport.transact(frame_line)
         return decode_frame(response_line)
 

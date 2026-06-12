@@ -1,5 +1,11 @@
 `timescale 1ns / 1ps
 
+// -----------------------------------------------------------------------------
+// UART 8N1 发送器。
+//
+// tx_start 拉高一拍后锁存 tx_data，依次发送 start bit、8 个数据位和 stop bit。
+// tx_busy 表示发送过程正在进行，tx_done 在整帧发送完成时输出一拍。
+// -----------------------------------------------------------------------------
 module uart_tx #(
     parameter integer CLK_FREQ  = 100_000_000,
     parameter integer BAUD_RATE = 115_200

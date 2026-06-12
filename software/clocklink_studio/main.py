@@ -1,3 +1,9 @@
+"""ClockLink Studio 命令行入口。
+
+该文件只负责解析命令行参数并调用服务层，不直接拼接协议字符串。
+协议帧由 protocol.commands.CommandBuilder 生成，收发由 transport 层负责。
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -10,6 +16,7 @@ from transport.serial_transport import SerialTransport
 
 
 def make_client(args: argparse.Namespace) -> ClockLinkClient:
+    """根据命令行参数创建 mock 或真实串口客户端。"""
     if args.mock or not args.port:
         return ClockLinkClient(MockTransport())
     return ClockLinkClient(SerialTransport(args.port))
@@ -20,12 +27,14 @@ def print_frame(label: str, frame) -> None:
 
 
 def run_demo(client: ClockLinkClient) -> None:
+    """无子命令时执行最小连通性演示。"""
     print_frame("hello", client.hello())
     print_frame("ping", client.ping())
     print_frame("status", client.status())
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """定义 CLI 命令表；命令名与 UART_PROTOCOL.md 中的协议能力对应。"""
     parser = argparse.ArgumentParser(description="ClockLink Studio CLI")
     parser.add_argument("--mock", action="store_true", help="use mock FPGA transport")
     parser.add_argument("--port", help="serial port such as COM5")
@@ -73,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI 主流程。每个分支只做一类业务操作，结束时统一关闭 transport。"""
     parser = build_parser()
     args = parser.parse_args(argv)
     client = make_client(args)

@@ -2000,3 +2000,254 @@ Phase:
 建议提交信息:
 
 - `feat: finalize clocklink fpga features and docs`
+
+### 2026-06-11 2132 - PPT 字体替换
+
+Phase:
+
+- 交付材料整理
+
+本次目标:
+
+- 将当前 `PPT/` 文件夹内 PPTX 文档中的 `Noto Sans CJK SC` 字体替换为更清楚大气且 Windows/PPT 常见的字体。
+
+完成内容:
+
+- 扫描 `PPT/` 下 `.pptx` 文件。
+- 将 `ClockLink智能时钟终端_验收讲解PPT_优化讲解版.pptx` 内部 OpenXML 中的 `Noto Sans CJK SC` 字体声明替换为 `Microsoft YaHei`。
+- 保持幻灯片文字内容和页面结构不变。
+
+修改文件:
+
+- `PPT/ClockLink智能时钟终端_验收讲解PPT_优化讲解版.pptx`
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- Python 扫描 PPTX ZIP/XML 中 `Noto Sans CJK SC` 出现次数。
+- Python 重写 PPTX ZIP 包并替换字体声明。
+- Python `zipfile.testzip()` 检查 PPTX 压缩包完整性。
+- Python `xml.etree.ElementTree.fromstring()` 检查 PPTX 内 XML 可解析。
+- Python 复查 `Noto Sans CJK SC` 和 `Microsoft YaHei` 出现次数。
+
+检查结果:
+
+- 替换前：`Noto Sans CJK SC` 共 590 处，分布在 28 个幻灯片 XML 文件中。
+- 替换后：`Noto Sans CJK SC` 为 0 处，`Microsoft YaHei` 为 590 处。
+- `zipfile.testzip()` 通过。
+- XML 解析错误数为 0。
+
+已知问题:
+
+- 未打开 PowerPoint 做人工视觉检查；建议最终提交前用 PowerPoint/WPS 快速翻页确认页面观感。
+
+下一步建议:
+
+- 若需要更强的正式演示风格，可再统一替换为 `Microsoft YaHei UI` 或 `DengXian` 并人工对比版式。
+
+### 2026-06-12 1133 - 项目阅读与状态理解
+
+Phase:
+
+- 项目交接阅读 / 当前状态梳理
+
+本次目标:
+
+- 阅读当前 `clock_amd` 项目，了解 Vivado 工程、ClockLink 通信扩展、PC 上位机和验证状态。
+
+完成内容:
+
+- 已按 `AGENTS.md` 要求阅读 `README.md`、`HANDOFF.md`、`docs/工程模块使用说明.md`、`docs/ClockLink_Studio_PC_Software_Design.md`、`docs/AGENT_WORKFLOW.md`、`docs/AGENT_TASKS.md`、`docs/AGENT_WORKLOG.md`。
+- 已补充阅读 `docs/UART_PROTOCOL.md`、`docs/CODEBASE_MAP.md`、`clock_amd.xdc`、`sim/comm/README.md` 和综合检查脚本。
+- 已阅读关键 HDL：`clock_amd_top.v`、`clock.v`、`ui_ctrl.v`、`display_ctrl.v`、`comm_ctrl.v`、`protocol_parser.v`、`protocol_builder.v`、`message_store.v`、`time_core.v`、`date_core.v`、`countdown_ctrl.v`、`notification_ctrl.v`、`alarm_ctrl.v`、`schedule_ctrl.v`。
+- 已阅读关键 PC 软件源码：`main.py`、`protocol/commands.py`、`protocol/codec.py`、`services/client.py`、`transport/mock_transport.py`、`transport/serial_transport.py`。
+
+修改文件:
+
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- `rg --files`
+- `git status -sb`
+- 多个 `Get-Content` / `rg` 源码与文档阅读命令
+
+检查结果:
+
+- 当前项目是 Nexys A7 Vivado 多功能时钟工程，已集成 `CLOCK / TIME / ALARM / HOUR / COUNT / SCHED / COMM` 七模式。
+- ClockLink Studio 通信链路已包含 UART、ASCII 帧协议、消息缓存、预设回复、时间同步、闹钟/日程/倒计时 PC 直接控制和 Tkinter 上位机。
+- 当前协议限制仍为可打印 ASCII；Unicode/中文消息不属于第一版 FPGA 协议和字库范围。
+- `MSG_GET/MSG_DATA` 在协议中保留，但当前 FPGA 端仍以 unsupported/NACK 处理；PC mock 支持该功能用于软件演示。
+- 本次未运行 Vivado、XSim 或 pytest，因为任务仅为项目阅读和状态理解。
+
+已知问题:
+
+- 工作区已有未提交改动：`docs/AGENT_WORKLOG.md`，以及未跟踪 `PPT/`、`贡献表/`；本次未回退或清理。
+- 最新文档记录显示整点报时和 OLED ASCII 字库补齐后尚未重新生成 bitstream，也尚未完成对应 Nexys A7 上板实测。
+
+下一步建议:
+
+- 若继续开发，优先明确下一阶段是生成 bitstream/板级复测、修复 `protocol_parser` warning，还是实现 FPGA 流式 `MSG_GET/MSG_DATA`。
+
+### 2026-06-12 1137 - 贡献表阅读与比例建议
+
+Phase:
+
+- 交付材料阅读 / 贡献度建议
+
+本次目标:
+
+- 阅读 `贡献表/` 目录下的 Word 贡献表内容，判断在尽量均分前提下各成员贡献度填写的大致合理范围。
+
+完成内容:
+
+- 已读取 `贡献表/课程设计贡献度表1.docx`，确认是空白模板。
+- 已读取 `贡献表/课程设计贡献度表1_CLOCK项目分工负责表.docx`，确认包含 CLOCK/ClockLink 四名成员分工说明，贡献度栏未填写。
+- 已读取 `贡献表/课程设计贡献度表1_工程项目二VGA游戏集合机贡献表.docx`，确认 VGA 表当前贡献度为杨龙驹 40%、樊逸晨 20%、蒲佳鑫 20%、方睿锦 20%。
+- 已读取 `贡献表/课程设计贡献度表1_实验一CLOCK与自主项目VGA合并版.docx`，确认合并表包含 CLOCK 与 VGA 两部分分工说明，贡献度栏未填写。
+
+修改文件:
+
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- `Get-ChildItem -LiteralPath .\贡献表`
+- 使用 `python-docx` 读取 4 个 `.docx` 的段落和表格内容
+
+检查结果:
+
+- 若严格均分，四人可写 25% / 25% / 25% / 25%。
+- 若保持分工描述可信且尽量接近均分，CLOCK 表建议杨龙驹略高，其他三人接近：28% / 24% / 24% / 24%。
+- VGA 表当前 40% / 20% / 20% / 20% 偏向组长；若希望更均衡，可改为 31% / 23% / 23% / 23%，或更接近均分的 28% / 24% / 24% / 24%。
+- CLOCK+VGA 合并表建议使用 28% / 24% / 24% / 24% 或 31% / 23% / 23% / 23%，取决于是否强调组长承担公共架构、集成和验收材料。
+
+已知问题:
+
+- 本次只阅读并给出比例建议，未修改任何 `.docx` 文件。
+
+下一步建议:
+
+- 若需要直接填写贡献度，建议先选定“严格均分”还是“组长略高但接近均分”的口径，再批量修改对应 Word 表格。
+
+### 2026-06-12 1202 - 源代码中文注释补充
+
+Phase:
+
+- 源码可读性整理 / 中文注释补充
+
+本次目标:
+
+- 在不修改功能逻辑、不重构代码的前提下，为当前项目 HDL 和 PC 软件源代码补充较详细的中文注释，便于课程验收、交接和后续维护。
+
+完成内容:
+
+- 为 `clock_amd.srcs/sources_1/new/` 下全部 Verilog 源文件补充中文模块头注释，说明模块职责、接口边界、复位/时序约定和当前限制。
+- 为核心 HDL 增加关键路径注释：`clock.v` 主线集成、`ui_ctrl.v` 模式/设置层规则、`display_ctrl.v` 数码管字符选择、`comm_ctrl.v` 命令分发、`protocol_parser.v` 固定顺序解析、`protocol_builder.v` 构帧、`message_store.v` 环形缓存和 OLED 窗口重建、`notification_ctrl.v` 统一提醒和整点报时。
+- 为 PC 上位机 Python 源码补充中文模块 docstring、类说明和关键函数注释，覆盖 CLI、桌面启动器、协议编解码、命令构造、client、mock/serial transport、服务层、GUI 和测试文件。
+- 未修改 UART 协议、功能逻辑、顶层端口或约束文件。
+
+修改文件:
+
+- HDL：`clock_amd.srcs/sources_1/new/*.v`
+- PC 软件：`software/clocklink_studio/**/*.py`
+- 工作日志：`docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- `python -m compileall -q software\clocklink_studio`
+- `cd software/clocklink_studio; python -m pytest`
+- `xvlog clock_amd.srcs\sources_1\new\protocol_parser.v`
+- `vivado -mode batch -source scripts\run_phase_synth_check.tcl`
+- `git diff --check`
+- `git status -sb`
+
+检查结果:
+
+- Python 编译检查通过。
+- PC 软件 pytest 通过，17 项全部通过。
+- `protocol_parser.v` 单文件 `xvlog` 通过。
+- 全源单独 `xvlog` 和个别单文件 `xvlog` 曾在工具时间预算内未返回且没有有效错误日志；随后使用项目综合脚本完成更完整 HDL 验证。
+- Vivado 综合检查通过，日志显示 `synth_design completed successfully` 和 `All user specified timing constraints are met.`。
+- 最新综合时序仍为 `Slack (MET): 1.779ns`，`TNS=0.000ns`，失败端点 0。
+- `git diff --check` 未发现空白错误，仅有 Git LF/CRLF 转换提示。
+
+已知问题:
+
+- 本次只补充注释，没有生成 bitstream，也没有做板级复测。
+- Vivado 仍保留既有 `protocol_parser msg_char_buf_reg` set/reset priority warning；本次未改逻辑，因此未处理该 warning。
+- 工作区仍有历史未跟踪目录 `PPT/` 和 `贡献表/`，本次未清理。
+
+下一步建议:
+
+- 若后续需要提交，可按“注释整理”单独提交，建议提交信息：`docs(code): add Chinese source comments`。
+- 若后续继续做功能增强，优先处理 `protocol_parser` 暂存结构 warning 或 FPGA 流式 `MSG_GET/MSG_DATA`。
+
+### 2026-06-12 1448 - 最新功能分支并入 main
+
+Phase:
+
+- Git 远端同步 / main 分支更新
+
+本次目标:
+
+- 将当前最新分支 `feature/clocklink-uart-comm` 并入 `main`。
+- 保留已有未跟踪交付材料目录，不把无关文件误加入本次提交。
+
+完成内容:
+
+- 已按仓库要求阅读 README、HANDOFF、工程说明、PC 软件设计、AGENT 工作流、任务列表和工作日志。
+- 已使用 `git fetch --all --prune` 更新远端引用。
+- 确认当前最新提交分支为 `feature/clocklink-uart-comm`。
+- 确认本地 `main` 是 `feature/clocklink-uart-comm` 的祖先，可执行快进合并，无需冲突解决。
+- 先提交当前 feature 分支上已跟踪的中文注释整理和本记录，再快进 `main`。
+- 未跟踪目录 `PPT/` 和 `贡献表/` 不纳入本次提交。
+
+修改文件:
+
+- HDL：`clock_amd.srcs/sources_1/new/*.v`
+- PC 软件：`software/clocklink_studio/**/*.py`
+- 工作日志：`docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+运行检查:
+
+- `git fetch --all --prune`
+- `git branch -a --sort=-committerdate`
+- `git log --oneline --decorate --graph --all -n 25`
+- `git merge-base --is-ancestor main feature/clocklink-uart-comm`
+- `git diff --check`
+
+检查结果:
+
+- `feature/clocklink-uart-comm` 是当前最近更新的功能分支。
+- 本地 `main` 可以快进到该功能分支。
+- `git diff --check` 未发现空白错误，仅有 Git LF/CRLF 转换提示。
+
+已知问题:
+
+- 本次 Git 合并不重新运行 Vivado/XSim/pytest；沿用上一条记录中的注释整理验证结果。
+- `PPT/` 和 `贡献表/` 仍为未跟踪目录，按当前任务范围保持不变。
+
+下一步建议:
+
+- 快进 `main` 后推送到远端 `origin/main`，再检查本地与远端提交一致性。

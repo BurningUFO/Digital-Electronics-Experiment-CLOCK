@@ -19,3 +19,7 @@ __all__ = [
     "parse_payload",
     "serialize_payload",
 ]
+"""ClockLink 协议层包。
+
+包含帧结构、XOR 校验、编解码和 PC 命令构造器。
+"""

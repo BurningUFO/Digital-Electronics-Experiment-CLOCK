@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// OLED 提醒弹窗标题文本辅助模块。
+//
+// 根据 notify_type/slot 生成 COUNT DONE、ALARM N、SCHED N 等弹窗文字。
+// -----------------------------------------------------------------------------
 module oled_notify_status (
     input  wire       notify_active,
     input  wire [1:0] notify_type,

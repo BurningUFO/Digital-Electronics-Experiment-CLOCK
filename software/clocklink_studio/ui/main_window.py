@@ -1,3 +1,11 @@
+"""ClockLink Studio Tkinter 主窗口。
+
+界面分为连接/消息页、功能控制页和底部通信日志：
+1. 连接/消息页负责 HELLO/PING/STATUS、时间同步、消息发送和聊天气泡展示。
+2. 功能控制页负责闹钟、日程、倒计时的直接读写。
+3. 底部日志保留原始帧和错误信息，便于演示时解释 PC 与 FPGA 的真实通信。
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -6,6 +14,7 @@ from protocol.codec import FrameError, decode_frame, hex_to_ascii_text, parse_pa
 
 
 SCHEDULE_TYPE_LABELS = {
+    # GUI 展示使用中英文名称，协议中仍只发送 type=0..7。
     "zh": {
         0: "第1节课",
         1: "课间",
@@ -171,6 +180,12 @@ COLORS = {
 
 
 class ClockLinkWindow:
+    """ClockLink Studio 主控制台。
+
+    该类只组织 Tkinter 控件和调用 ClockLinkClient；协议细节仍由 protocol/
+    和 services/ 分层负责。
+    """
+
     def __init__(self, client, language: str = "zh") -> None:
         self.client = client
         self.language = language if language in TEXT else "zh"

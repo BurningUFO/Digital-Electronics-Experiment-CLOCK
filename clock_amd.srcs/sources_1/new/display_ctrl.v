@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// 八位数码管显示内容控制。
+//
+// 输入均为各功能模块已经计算好的 BCD/状态信号；本模块只负责：
+// 1. 按当前模式选择要显示的 8 个字符码。
+// 2. 在设置层对当前字段做闪烁隐藏。
+// 3. 对 COMM 状态、日程类型等非数字内容转成 seg_7 能识别的字符码。
+//
+// 输出仍是 6-bit 字符码，真正的七段译码和位扫描在 nexys_seg_scan/seg_7 中完成。
+// -----------------------------------------------------------------------------
 module display_ctrl(
     input  clk,
     input  rst,
@@ -110,6 +120,7 @@ module display_ctrl(
     reg [5:0] hour_unit_next;
     reg [5:0] hour_ten_next;
 
+    // 槽位面向用户从 1 开始显示，内部仍保持 0..7。
     function [5:0] slot_digit;
         input [2:0] slot;
         begin
@@ -117,6 +128,7 @@ module display_ctrl(
         end
     endfunction
 
+    // 日程类型页使用六位数码管近似显示 CLASS1、BREAK 等固定标签。
     function [5:0] schedule_type_char;
         input [2:0] type_index;
         input [2:0] char_index;
@@ -208,6 +220,7 @@ module display_ctrl(
         end
     endfunction
 
+    // COMM 右四位状态：DISC/WAIT/CONN/MSG!/ERR。
     function [5:0] comm_status_char;
         input [2:0] status;
         input [1:0] char_index;
@@ -258,6 +271,7 @@ module display_ctrl(
         end
     endfunction
 
+    // 组合阶段先计算下一拍显示内容；输出寄存阶段再建立时序边界。
     always @(*) begin
         mode_next      = DISP_N;
         status_next    = DISP_BLANK;
@@ -390,6 +404,7 @@ module display_ctrl(
             end
         endcase
 
+        // 设置层字段闪烁：只隐藏当前正在编辑的字段，其他内容保持可读。
         if (setting_active && blink_hide) begin
             case (mode_state)
                 MODE_NORMAL: begin
@@ -497,6 +512,7 @@ module display_ctrl(
         end
     end
 
+    // 寄存输出，切断多模式选择到七段扫描模块之间的长组合路径。
     always @(posedge clk or negedge rst) begin
         if (!rst) begin
             mode_disp_code      <= DISP_N;

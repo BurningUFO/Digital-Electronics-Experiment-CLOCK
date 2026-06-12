@@ -1,7 +1,11 @@
+"""日程业务服务封装。"""
+
 from .client import ClockLinkClient
 
 
 class ScheduleService:
+    """给 GUI 使用的日程槽读写接口。"""
+
     def __init__(self, client: ClockLinkClient) -> None:
         self.client = client
 

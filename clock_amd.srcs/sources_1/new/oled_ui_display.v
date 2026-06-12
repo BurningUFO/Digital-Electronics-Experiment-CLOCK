@@ -1,3 +1,16 @@
+// -----------------------------------------------------------------------------
+// SSD1306 OLED 状态副屏和 COMM 页面渲染模块。
+//
+// 本模块内部完成：
+// 1. SSD1306 初始化和分页刷新。
+// 2. 普通状态页：日期、温度、最近日程、最近闹钟、倒计时、模式标签。
+// 3. 提醒弹窗：COUNT DONE / ALARM N / SCHED N。
+// 4. COMM 专用页：连接状态、消息时间戳、消息正文窗口和预设回复列表。
+//
+// 时序说明：
+// OLED 字符渲染路径经过多级寄存，避免“页面选择 + 文本选择 + 字模查表”
+// 在一个 100MHz 周期内完成。不要把大段文本重新改成宽组合 mux。
+// -----------------------------------------------------------------------------
 module oled_ui_display (
     input  wire       clk,
     input  wire       rst,
@@ -199,6 +212,7 @@ module oled_ui_display (
         .notify_text(notify_text_ascii)
     );
 
+    // SSD1306 初始化命令表，按 step_index 顺序发送。
     function [7:0] init_cmd;
         input [5:0] index;
         begin
@@ -389,6 +403,8 @@ module oled_ui_display (
         end
     endfunction
 
+    // 8x7 内置 ASCII 字库：覆盖可打印 ASCII 0x20..0x7E。
+    // 返回值的 bit7..bit0 表示当前字符一行的 8 个像素。
     function [7:0] glyph_row;
         input [7:0] ch;
         input [2:0] row;
@@ -506,6 +522,7 @@ module oled_ui_display (
         end
     endfunction
 
+    // SSD1306 按列写入，因此把 7 行字形压成一列数据字节。
     function [7:0] glyph_column;
         input [7:0] ch;
         input [2:0] col;
@@ -1425,6 +1442,7 @@ module oled_ui_display (
         end
     endfunction
 
+    // 根据当前 OLED page/column 得到本列要渲染的文本类型、字符索引和列偏移。
     function [19:0] page_info;
         input [2:0] page;
         input [7:0] col;
@@ -1552,6 +1570,7 @@ module oled_ui_display (
         end
     endfunction
 
+    // 最终页数据选择。复杂文本路径已在调用前流水化，这里只做短路径选择。
     function [7:0] page_data;
         input [2:0] page;
         input [7:0] col;
@@ -1678,6 +1697,7 @@ module oled_ui_display (
         end
     endfunction
 
+    // 向底层 I2C master 发起一个 SSD1306 命令/数据字节。
     task issue_ll_cmd;
         input [1:0] t;
         input [7:0] d;
