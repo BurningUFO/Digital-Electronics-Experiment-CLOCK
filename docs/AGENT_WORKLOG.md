@@ -2321,3 +2321,58 @@ Phase:
 下一步建议:
 
 - 检查通过后提交本次发行整理；需要正式发布时再打 `v1.0.0` 标签并推送。
+
+### 2026-06-12 1615 - ClockLink Studio v1.0.0 正式 Release
+
+Phase:
+
+- PC 软件正式发行
+
+本次目标:
+
+- 正式创建 ClockLink Studio `v1.0.0` 发行版，让 GitHub Releases 页面出现可下载的软件包。
+
+完成内容:
+
+- 确认此前发行版为空的原因：仓库已经具备 release workflow，但尚未推送 `v*` 标签，也未手动创建 GitHub Release。
+- 确认当前 `main` 与 `origin/main` 一致，HEAD 为 `ea44a13 chore: prepare ClockLink Studio release packaging`。
+- 本机未安装 GitHub CLI `gh`，因此不能直接用 `gh release create` 从本地创建 Release。
+- 采用已提交的 GitHub Actions workflow：推送 `v1.0.0` 标签后，由远端 workflow 自动构建 Windows ZIP 并创建 GitHub Release。
+- 在本地先构建 `v1.0.0` 包，验证打包流程和软件测试通过。
+
+修改文件:
+
+- `docs/AGENT_WORKLOG.md`
+
+新增文件:
+
+- 无
+
+本地生成文件:
+
+- `artifacts/releases/ClockLinkStudio-v1.0.0-win64.zip`，该目录已被 `.gitignore` 忽略，不作为源码提交。
+
+运行检查:
+
+- `git status -sb`
+- `git tag --list 'v*'`
+- `git fetch --tags origin --prune`
+- `powershell -ExecutionPolicy Bypass -File scripts\package_clocklink_studio.ps1 -Version v1.0.0`
+
+检查结果:
+
+- 当前没有已有 `v*` tag，可使用 `v1.0.0`。
+- 本地正式打包通过。
+- PC 软件 pytest 通过，17 项全部通过。
+- 本地生成 `ClockLinkStudio-v1.0.0-win64.zip`。
+- 打包过程中 pip 仍因当前网络/权限限制对索引访问重试，但依赖本地已满足，不影响测试、PyInstaller 构建和 ZIP 生成。
+
+已知问题:
+
+- 本机没有 `gh` CLI；Release 的创建和附件上传依赖推送 `v1.0.0` 后的 GitHub Actions workflow。
+- 本次不重新运行 Vivado/XSim/bitstream，上位机软件包只包含 PC 程序和 UART 协议文档。
+- 本地未跟踪目录 `PPT/` 和 `贡献表/` 保持不变，不纳入 Release 源码提交。
+
+下一步建议:
+
+- 提交本记录，推送 `main`，创建并推送 `v1.0.0` 标签，然后检查 GitHub Actions/Release 状态。
